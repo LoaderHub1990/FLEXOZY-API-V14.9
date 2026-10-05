@@ -247,7 +247,13 @@ export default function Shell({ user, settings, children }) {
             </div>
             <div>
               <div className="eyebrow">ชุมชน Discord</div>
-              {settings.discord_widget_id ? <DiscordWidget serverId={settings.discord_widget_id} /> : settings.discord_url ? <a className="btn btn-primary" href={settings.discord_url} target="_blank" rel="noopener noreferrer">เข้าร่วม Discord</a> : <span className="subtle">-</span>}
+              {settings.discord_widget_id ? (
+                <DiscordWidget serverId={settings.discord_widget_id} />
+              ) : settings.discord_url ? (
+                <a className="btn btn-primary" href={settings.discord_url} target="_blank" rel="noopener noreferrer">เข้าร่วม Discord</a>
+              ) : (
+                <span className="subtle">-</span>
+              )}
             </div>
           </div>
           <div className="copy"><span>Copyright © {new Date().getFullYear()} {settings.shop_name} · All rights reserved</span></div>
