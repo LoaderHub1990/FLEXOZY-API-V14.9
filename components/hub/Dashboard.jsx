@@ -5,16 +5,59 @@ import { Mark, Emo } from './Logo';
 import DiscordPreview from './DiscordPreview';
 
 const baht = (s) => (Number(s) / 100).toLocaleString('th-TH', { maximumFractionDigits: 2 });
-const TABS = [['shop', 'ร้าน'], ['products', 'สินค้า'], ['buttons', 'ปุ่ม'], ['discord', 'Discord'], ['api', 'API']];
+const PATHS = {
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  box: 'M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+  store: 'M3 9l2-5h14l2 5M3 9h18M5 9v11h14V9M9 20v-6h6v6',
+  cursor: 'M5 4l6 16 2.5-6.5L20 11z',
+  chat: 'M4 5h16v11H9l-5 4z',
+  code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
+  plus: 'M12 5v14M5 12h14',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM13 7l4 4',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  out: 'M14 4h6v6M20 4l-9 9M18 14v5H5V6h5',
+  logout: 'M9 4H5v16h4M16 8l4 4-4 4M20 12H9',
+  coin: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4',
+  sold: 'M4 12l5 5L20 6M4 20h16',
+};
+const Ico = ({ n, s = 18 }) => <svg className="hb-ic" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[n]} /></svg>;
 
-function Copy({ text }) {
+const TABS = [
+  ['overview', 'ภาพรวม', 'grid', 'สรุปร้านและขั้นตอนเริ่มต้น'],
+  ['products', 'สินค้า & สต็อก', 'box', 'เพิ่มสินค้า เติมสต็อก ตั้งราคา'],
+  ['shop', 'ตั้งค่าร้าน', 'store', 'ชื่อ สีธีม โลโก้ แบนเนอร์'],
+  ['buttons', 'ปุ่มบนบอท', 'cursor', 'ชื่อและอีโมจิของปุ่มในแผง Discord'],
+  ['discord', 'เชื่อม Discord', 'chat', 'เชิญบอท ใส่ไอดีเซิร์ฟเวอร์และห้อง'],
+  ['api', 'API', 'code', 'ลิงก์เช็คสต็อกร้านของคุณ'],
+];
+
+function Copy({ text, label = 'คัดลอก' }) {
   const [ok, setOk] = useState(false);
-  return <button className="hb-btn ghost sm" onClick={() => { navigator.clipboard?.writeText(text); setOk(true); setTimeout(() => setOk(false), 1200); }}>{ok ? 'คัดลอกแล้ว' : 'คัดลอก'}</button>;
+  return <button type="button" className="hb-btn ghost sm" onClick={() => { navigator.clipboard?.writeText(text); setOk(true); setTimeout(() => setOk(false), 1200); }}>{ok ? 'คัดลอกแล้ว ✓' : label}</button>;
+}
+
+function Modal({ onClose, wide, children }) {
+  const cb = useRef(onClose);
+  cb.current = onClose;
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && cb.current();
+    addEventListener('keydown', k);
+    document.body.style.overflow = 'hidden';
+    return () => { removeEventListener('keydown', k); document.body.style.overflow = ''; };
+  }, []);
+  return (
+    <div className="hb-mask" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={'hb-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true">{children}</div>
+    </div>
+  );
 }
 
 export default function Dashboard({ base = '/shop' }) {
   const [d, setD] = useState(null);
-  const [tab, setTab] = useState('shop');
+  const [tab, setTab] = useState('overview');
   const [toast, setToast] = useState(null);
   const ver = useRef(0);
 
@@ -43,42 +86,62 @@ export default function Dashboard({ base = '/shop' }) {
   };
   const logout = async () => { await api('/api/auth/logout', 'POST', {}); location.href = `${base}/login`; };
 
-  if (!d) return <div className="hb" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: '#71717a' }}>กำลังโหลด…</div>;
+  if (!d) return <div className="hb ready" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}><div className="hb-loading"><Mark size={42} /><span>กำลังโหลด…</span></div></div>;
   const { shop, products, user } = d;
+  const cur = TABS.find((t) => t[0] === tab) || TABS[0];
 
   return (
-    <div className="hb">
-      <div className="hb-dash">
-        <div className="hb-top">
-          <a className="hb-brand" href={`${base}/login`}><Mark size={22} /><b>flexozy</b><span>.shop</span></a>
-          <div className="hb-me">
-            {user.discord?.avatar && <img src={user.discord.avatar} alt="" />}
-            <span>{user.name}</span>
-            <button className="hb-btn ghost sm" onClick={logout}>ออกจากระบบ</button>
-          </div>
-        </div>
-
-        {!shop ? <CreateShop run={run} d={d} /> : (
-          <div className="hb-grid">
-            <div className="hb-panel">
-              <div className="hb-tabs">{TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-              {!shop.active && <p className="hb-badge bad">ร้านนี้ถูกระงับโดยผู้ดูแลระบบ</p>}
-              {tab === 'shop' && <ShopTab shop={shop} d={d} run={run} />}
-              {tab === 'products' && <ProductsTab products={products} limits={d.limits} fee={d.fee} run={run} say={say} />}
-              {tab === 'buttons' && <ButtonsTab shop={shop} run={run} />}
-              {tab === 'discord' && <DiscordTab shop={shop} d={d} run={run} />}
-              {tab === 'api' && <ApiTab d={d} shop={shop} />}
+    <div className="hb ready">
+      <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
+      <div className="hb-app">
+        <aside className="hb-sb">
+          <a className="hb-brand" href={`${base}/login`}><Mark size={24} /><b>flexozy</b><span>.shop</span></a>
+          {shop && (
+            <nav className="hb-nav2" aria-label="เมนู">
+              {TABS.map(([k, l, ic]) => (
+                <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}><Ico n={ic} /><span>{l}</span></button>
+              ))}
+            </nav>
+          )}
+          <div className="hb-sb-foot">
+            <div className="hb-user">
+              {user.discord?.avatar ? <img src={user.discord.avatar} alt="" /> : <i>{String(user.name || '?').slice(0, 1)}</i>}
+              <div><b>{user.name}</b><span>{user.discord?.username ? '@' + user.discord.username : 'Discord'}</span></div>
             </div>
-            <aside className="hb-side">
-              <p className="hb-sub" style={{ margin: '0 0 8px' }}>พรีวิวแผงใน Discord (อัปเดตสด)</p>
-              <DiscordPreview shop={shop} products={products} />
-              <div className="hb-row" style={{ marginTop: 12 }}>
-                <a className="hb-btn ghost sm" href={d.urls.page} target="_blank" rel="noreferrer">เปิดหน้าร้าน ↗</a>
-                <span className={'hb-badge ' + (shop.guild_verified && shop.bot_in_guild ? 'ok' : 'warn')}>{shop.guild_verified && shop.bot_in_guild ? 'บอทพร้อมใช้งาน' : 'รอเชื่อมบอท'}</span>
-              </div>
-            </aside>
+            <button className="hb-ico-btn" onClick={logout} title="ออกจากระบบ" aria-label="ออกจากระบบ"><Ico n="logout" /></button>
           </div>
-        )}
+        </aside>
+
+        <main className="hb-main">
+          {!shop ? <CreateShop run={run} d={d} /> : (
+            <>
+              <header className="hb-pagehead">
+                <div>
+                  <h1>{cur[1]}</h1>
+                  <p>{cur[3]}</p>
+                </div>
+                <div className="hb-linkchip">
+                  <Ico n="link" s={15} /><code>{d.urls.page.replace(/^https?:\/\//, '')}</code>
+                  <Copy text={d.urls.page} label="คัดลอก" />
+                  <a className="hb-btn sm" href={d.urls.page} target="_blank" rel="noreferrer">เปิดร้าน <Ico n="out" s={14} /></a>
+                </div>
+              </header>
+              {!shop.active && <div className="hb-alert bad">ร้านนี้ถูกระงับโดยผู้ดูแลระบบ</div>}
+
+              {tab === 'overview' && <Overview shop={shop} products={products} d={d} go={setTab} />}
+              {tab === 'products' && <ProductsTab products={products} limits={d.limits} fee={d.fee} run={run} say={say} />}
+              {tab === 'shop' && <section className="hb-pn"><ShopTab shop={shop} d={d} run={run} /></section>}
+              {tab === 'buttons' && (
+                <div className="hb-cols">
+                  <section className="hb-pn"><ButtonsTab shop={shop} run={run} /></section>
+                  <aside className="hb-pn hb-prev"><p className="hb-sub">พรีวิวแผงใน Discord (อัปเดตสด)</p><DiscordPreview shop={shop} products={products} /></aside>
+                </div>
+              )}
+              {tab === 'discord' && <section className="hb-pn"><DiscordTab shop={shop} d={d} run={run} /></section>}
+              {tab === 'api' && <section className="hb-pn"><ApiTab d={d} shop={shop} /></section>}
+            </>
+          )}
+        </main>
       </div>
       {toast && <div className={'hb-toast' + (toast.bad ? ' bad' : '')} role="status">{toast.msg}</div>}
     </div>
@@ -89,14 +152,70 @@ function CreateShop({ run, d }) {
   const [name, setName] = useState(d?.user?.discord?.name || '');
   const slug = d?.suggestedSlug || 'ชื่อ-discord';
   return (
-    <div className="hb-panel" style={{ maxWidth: 520, margin: '40px auto' }}>
-      <h2 className="hb-h">สร้างร้านของคุณ</h2>
-      <p className="hb-sub">ลิงก์ร้านสร้างจากชื่อ Discord ของคุณอัตโนมัติ (แก้ไม่ได้) ส่วนชื่อร้านแก้ภายหลังได้</p>
-      <div className="hb-f">
-        <div className="hb-sub" style={{ margin: 0 }}>ลิงก์ร้าน: flexozy.site/<b>{slug}</b></div>
-        <label>ชื่อร้าน<input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อร้านที่แสดง" maxLength={40} /></label>
-        <button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'POST', { name }), 'สร้างร้านแล้ว')}>สร้างร้าน</button>
+    <div className="hb-create">
+      <div className="hb-create-card">
+        <div className="hb-create-av">{d.user.discord?.avatar ? <img src={d.user.discord.avatar} alt="" /> : <Mark size={40} />}</div>
+        <h2>สร้างร้านของคุณ</h2>
+        <p>ยินดีต้อนรับ <b>{d.user.name}</b> — ตั้งชื่อร้านแล้วเริ่มขายผ่านบอท Discord ได้เลย</p>
+        <div className="hb-slugbox"><span>ลิงก์ร้านของคุณ</span><code>flexozy.site/<b>{slug}</b></code><em>สร้างจากชื่อ Discord อัตโนมัติ (แก้ไม่ได้)</em></div>
+        <label className="hb-fl">ชื่อร้าน<input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อร้านที่แสดง" maxLength={40} /></label>
+        <button className="hb-go wide" onClick={() => run(() => api('/api/hub/shop', 'POST', { name }), 'สร้างร้านแล้ว')}>สร้างร้าน <span aria-hidden="true">→</span></button>
       </div>
+    </div>
+  );
+}
+
+function Overview({ shop, products, d, go }) {
+  const stock = products.reduce((a, p) => a + p.stock, 0);
+  const sold = products.reduce((a, p) => a + p.sold, 0);
+  const out = products.filter((p) => p.active && p.stock === 0).length;
+  const bot = shop.guild_verified && shop.bot_in_guild;
+  const steps = [
+    [products.length > 0, 'เพิ่มสินค้าชิ้นแรก', 'ตั้งชื่อ ราคา และอีโมจิ', 'products'],
+    [stock > 0, 'เติมสต็อกสินค้า', 'วางคีย์/ไอดีพาส 1 บรรทัด = 1 ชิ้น', 'products'],
+    [bot, 'เชื่อมบอท Discord', 'ใส่ไอดีเซิร์ฟเวอร์และห้อง บอทสร้างแผงร้านให้เอง', 'discord'],
+  ];
+  const stats = [
+    ['box', 'สินค้าทั้งหมด', `${products.length}/${d.limits.products}`],
+    ['coin', 'สต็อกคงเหลือ', stock.toLocaleString('th-TH')],
+    ['sold', 'ขายแล้ว', sold.toLocaleString('th-TH')],
+    ['cursor', 'สินค้าหมด', String(out), out ? 'warn' : ''],
+  ];
+  return (
+    <div className="hb-cols">
+      <div className="hb-stack">
+        <section className="hb-hero2" style={{ '--c': shop.color, backgroundImage: shop.banner ? `linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.82)),url(${shop.banner})` : undefined }}>
+          {shop.logo ? <img src={shop.logo} alt="" /> : <i>{shop.name.slice(0, 1).toUpperCase()}</i>}
+          <div>
+            <h2>{shop.name}</h2>
+            <p>{shop.tagline || 'ยังไม่มีคำอธิบายร้าน — ตั้งได้ที่ “ตั้งค่าร้าน”'}</p>
+          </div>
+          <span className={'hb-badge ' + (bot ? 'ok' : 'warn')}>{bot ? 'บอทพร้อมใช้งาน' : 'รอเชื่อมบอท'}</span>
+        </section>
+
+        <div className="hb-stats">
+          {stats.map(([ic, l, v, c]) => (
+            <div key={l} className={'hb-stat ' + (c || '')}><span className="ic"><Ico n={ic} /></span><b>{v}</b><em>{l}</em></div>
+          ))}
+        </div>
+
+        <section className="hb-pn">
+          <h3 className="hb-h">เริ่มต้นใช้งาน</h3>
+          <div className="hb-steps">
+            {steps.map(([ok, t, s, to], i) => (
+              <button key={t} className={ok ? 'done' : ''} onClick={() => go(to)}>
+                <span className="n">{ok ? <Ico n="check" s={16} /> : i + 1}</span>
+                <span className="tx"><b>{t}</b><em>{s}</em></span>
+                <span className="go">{ok ? 'เรียบร้อย' : 'ไปทำเลย →'}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+      <aside className="hb-pn hb-prev">
+        <p className="hb-sub">พรีวิวแผงใน Discord (อัปเดตสด)</p>
+        <DiscordPreview shop={shop} products={products} />
+      </aside>
     </div>
   );
 }
@@ -142,64 +261,136 @@ function ShopTab({ shop, run }) {
   );
 }
 
-function ProductForm({ p, run, say }) {
+
+/* ---------- สินค้า & สต็อก (เหมือนหลังบ้านเว็บหลัก) ---------- */
+function ProductModal({ p, onClose, run }) {
   const isNew = !p;
   const [f, setF] = useState({ name: p?.name || '', price: p ? Number(p.price) / 100 : '', emoji: p?.emoji || '', description: p?.description || '', active: p ? p.active : true });
-  const [open, setOpen] = useState(false);
-  const [lines, setLines] = useState('');
-  const [items, setItems] = useState(null);
+  const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }));
-  const loadItems = async () => { try { setItems((await api(`/api/hub/products/${p.id}/stock`)).items); } catch (e) { say(e.message, true); } };
-  useEffect(() => { if (open && p) loadItems(); }, [open, p?.stock]); // eslint-disable-line
-
   const save = async () => {
+    setBusy(true);
     const ok = await run(() => (isNew ? api('/api/hub/products', 'POST', f) : api('/api/hub/products/' + p.id, 'PUT', f)), isNew ? 'เพิ่มสินค้าแล้ว' : 'บันทึกสินค้าแล้ว');
-    if (ok && isNew) setF({ name: '', price: '', emoji: '', description: '', active: true });
+    setBusy(false);
+    if (ok) onClose();
   };
   return (
-    <div className="hb-prod">
-      <div className="hb-two">
-        <label>ชื่อสินค้า<input value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={80} /></label>
+    <Modal onClose={onClose}>
+      <div className="hb-mh"><h3>{isNew ? 'เพิ่มสินค้า' : 'แก้ไขสินค้า'}</h3><button className="hb-x" onClick={onClose} aria-label="ปิด">✕</button></div>
+      <div className="hb-f">
+        <label>ชื่อสินค้า<input value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={80} placeholder="เช่น คีย์ VIP 30 วัน" autoFocus /></label>
         <div className="hb-two">
-          <label>ราคา (บาท)<input type="number" min="0.01" step="0.01" value={f.price} onChange={(e) => set('price', e.target.value)} /></label>
-          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={f.emoji} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥 หรือ <:vip:123…>" /><Emo v={f.emoji} size={22} /></div></label>
+          <label>ราคา (บาท)<input type="number" min="0.01" step="0.01" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="59" /></label>
+          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={f.emoji} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥 หรือ <:vip:123…>" /><Emo v={f.emoji} size={24} /></div></label>
+        </div>
+        <label>รายละเอียด<input value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} placeholder="รายละเอียดสั้นๆ (ไม่บังคับ)" /></label>
+        <label className="hb-check"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /><span>แสดงสินค้านี้ในร้าน</span></label>
+        <button className="hb-go wide" onClick={save} disabled={busy}>{busy ? 'กำลังบันทึก…' : isNew ? 'เพิ่มสินค้า' : 'บันทึก'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+function StockModal({ pid, products, limits, run, say, onClose }) {
+  const p = products.find((x) => x.id === pid);
+  const [items, setItems] = useState(null);
+  const [lines, setLines] = useState('');
+  const [find, setFind] = useState('');
+  const [msg, setMsg] = useState(null);
+  const file = useRef(null);
+  const loadItems = useCallback(async () => {
+    try { setItems((await api(`/api/hub/products/${pid}/stock`)).items); } catch (e) { say(e.message, true); }
+  }, [pid]); // eslint-disable-line
+  useEffect(() => { loadItems(); }, [loadItems, p?.stock]);
+  if (!p) return null;
+
+  const list = [...new Set(lines.split(/\r?\n/).map((l) => l.trim()).filter(Boolean))];
+  const over = list.length > limits.stockPerAdd;
+  const add = async () => {
+    setMsg(null);
+    try {
+      const r = await api(`/api/hub/products/${pid}/stock`, 'POST', { lines });
+      setLines(''); setMsg({ t: 'ok', m: `เพิ่ม ${r.added} รายการแล้ว` });
+      await run(async () => {});
+    } catch (e) { setMsg({ t: 'err', m: e.message }); }
+  };
+  const readFile = (f) => {
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => setLines((o) => (o ? o.replace(/\s+$/, '') + '\n' : '') + String(r.result || ''));
+    r.readAsText(f);
+  };
+  const shown = (items || []).filter((it) => !find || it.content.toLowerCase().includes(find.toLowerCase()));
+  return (
+    <Modal onClose={onClose} wide>
+      <div className="hb-mh"><div><h3>สต็อก: {p.name}</h3><span className="hb-sub" style={{ margin: 0 }}>ขายแล้ว {p.sold} · เหลือ {p.stock}</span></div><button className="hb-x" onClick={onClose} aria-label="ปิด">✕</button></div>
+      <div className="hb-f">
+        <p className="hb-sub" style={{ margin: 0 }}>1 บรรทัด = 1 ชิ้นที่ส่งให้ลูกค้า (คีย์/โค้ด/ไอดีพาส) เพิ่มได้ครั้งละไม่เกิน {limits.stockPerAdd} บรรทัด · บรรทัดซ้ำในชุดเดียวกันจะถูกตัดออกอัตโนมัติ</p>
+        <textarea value={lines} onChange={(e) => setLines(e.target.value)} rows={6} placeholder={'KEY-AAAA\nKEY-BBBB\nไอดี:รหัสผ่าน'} />
+        <div className="hb-row">
+          <button className="hb-go" onClick={add} disabled={!list.length || over}><Ico n="plus" s={16} /> เพิ่มสต็อก {list.length > 0 && `(${list.length})`}</button>
+          <input ref={file} type="file" accept=".txt,.csv,text/plain" hidden onChange={(e) => { readFile(e.target.files?.[0]); e.target.value = ''; }} />
+          <button className="hb-btn ghost sm" type="button" onClick={() => file.current?.click()}><Ico n="upload" s={15} /> นำเข้าจากไฟล์ .txt</button>
+          {over && <span className="hb-badge bad">เกิน {limits.stockPerAdd} บรรทัด</span>}
+        </div>
+        {msg && <div className={'hb-alert ' + (msg.t === 'ok' ? 'ok' : 'bad')}>{msg.m}</div>}
+
+        <div className="hb-split">
+          <b>ยังไม่ขาย ({p.stock})</b>
+          <input className="hb-find" value={find} onChange={(e) => setFind(e.target.value)} placeholder="ค้นหาในสต็อก…" />
+          {p.stock > 0 && <button className="hb-btn danger sm" onClick={() => confirm('ลบสต็อกที่ยังไม่ขายทั้งหมดของสินค้านี้?') && run(() => api(`/api/hub/products/${pid}/stock`, 'DELETE'), 'ล้างสต็อกแล้ว')}>ลบทั้งหมด</button>}
+        </div>
+        <div className="hb-stock-list">
+          {items === null ? <div><span>กำลังโหลด…</span></div> : shown.length === 0 ? <div><span>{find ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีสต็อก'}</span></div> : shown.map((it) => (
+            <div key={it.id}><span>{it.content}</span><button onClick={() => run(() => api('/api/hub/stock/' + it.id, 'DELETE'))} aria-label="ลบ">ลบ</button></div>
+          ))}
+          {items && p.stock > items.length && !find && <div className="more"><span>แสดง {items.length} รายการแรก</span></div>}
         </div>
       </div>
-      <label>รายละเอียด<input value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} /></label>
-      <div className="hb-row">
-        <button className="hb-btn sm" onClick={save}>{isNew ? 'เพิ่มสินค้า' : 'บันทึก'}</button>
-        {!isNew && <>
-          <label className="hb-row" style={{ flexDirection: 'row', gap: 6 }}><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} />แสดงในร้าน</label>
-          <span className={'hb-badge ' + (p.stock > 0 ? 'ok' : 'bad')}>สต็อก {p.stock}</span><span className="hb-badge">ขายแล้ว {p.sold}</span>
-          <button className="hb-btn ghost sm" onClick={() => setOpen(!open)}>{open ? 'ปิดสต็อก' : 'จัดการสต็อก'}</button>
-          <button className="hb-btn danger sm" onClick={() => confirm(`ลบ “${p.name}” และสต็อกทั้งหมด?`) && run(() => api('/api/hub/products/' + p.id, 'DELETE'), 'ลบแล้ว')}>ลบ</button>
-        </>}
-      </div>
-      {open && !isNew && (
-        <div className="hb-f">
-          <label>เพิ่มสต็อก (1 บรรทัด = 1 ชิ้น เช่น user:pass หรือคีย์)
-            <textarea value={lines} onChange={(e) => setLines(e.target.value)} placeholder={'ไอดี1:รหัส1\nไอดี2:รหัส2'} /></label>
-          <div className="hb-row">
-            <button className="hb-btn sm" onClick={async () => { if (await run(() => api(`/api/hub/products/${p.id}/stock`, 'POST', { lines }), 'เพิ่มสต็อกแล้ว')) setLines(''); }}>เพิ่มสต็อก</button>
-            <button className="hb-btn danger sm" onClick={() => confirm('ล้างสต็อกที่ยังไม่ขายทั้งหมด?') && run(() => api(`/api/hub/products/${p.id}/stock`, 'DELETE'), 'ล้างสต็อกแล้ว')}>ล้างสต็อกที่เหลือ</button>
-          </div>
-          {items && <div className="hb-stock-list">{items.length === 0 ? <div><span>ไม่มีสต็อก</span></div> : items.map((it) => (
-            <div key={it.id}><span>{it.content}</span><button onClick={() => run(() => api('/api/hub/stock/' + it.id, 'DELETE'))}>✕</button></div>
-          ))}</div>}
-        </div>
-      )}
-    </div>
+    </Modal>
   );
 }
 
 function ProductsTab({ products, limits, fee, run, say }) {
+  const [edit, setEdit] = useState(null); // null | 'new' | product
+  const [stockId, setStockId] = useState(null);
+  const full = products.length >= limits.products;
   return (
-    <div>
-      <h3 className="hb-h">สินค้า ({products.length}/{limits.products})</h3>
-      <p className="hb-sub">ผู้ซื้อจ่ายจากกระเป๋าเงินเดียวกับ flexozy.site รายได้เข้ากระเป๋าของคุณทันที{fee ? ` (หักค่าธรรมเนียม ${fee}%)` : ''}</p>
-      {products.length < limits.products && <ProductForm run={run} say={say} />}
-      <div style={{ marginTop: 12 }}>{products.map((p) => <ProductForm key={p.id} p={p} run={run} say={say} />)}</div>
-    </div>
+    <section className="hb-pn">
+      <div className="hb-split top">
+        <div><h3 className="hb-h">สินค้า ({products.length}/{limits.products})</h3>
+          <p className="hb-sub" style={{ margin: 0 }}>ผู้ซื้อจ่ายจากกระเป๋าเงินเดียวกับ flexozy.site รายได้เข้ากระเป๋าของคุณทันที{fee ? ` (หักค่าธรรมเนียม ${fee}%)` : ''}</p></div>
+        <button className="hb-go" onClick={() => setEdit('new')} disabled={full}><Ico n="plus" s={16} /> เพิ่มสินค้า</button>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="hb-empty"><Ico n="box" s={34} /><b>ยังไม่มีสินค้า</b><span>กด “เพิ่มสินค้า” เพื่อเริ่มต้น แล้วเติมสต็อกให้พร้อมขาย</span></div>
+      ) : (
+        <div className="hb-tblwrap">
+          <table className="hb-tbl">
+            <thead><tr><th></th><th>ชื่อ</th><th>ราคา</th><th>สต็อก</th><th>ขายแล้ว</th><th>สถานะ</th><th></th></tr></thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id}>
+                  <td><span className="hb-em"><Emo v={p.emoji} size={22} />{!p.emoji && '🛍️'}</span></td>
+                  <td className="nm"><b>{p.name}</b>{p.description && <span>{p.description}</span>}</td>
+                  <td className="pr">฿{baht(p.price)}</td>
+                  <td><button className={'hb-stk ' + (p.stock === 0 ? 'bad' : p.stock <= 3 ? 'warn' : 'ok')} onClick={() => setStockId(p.id)}>{p.stock} · จัดการ</button></td>
+                  <td>{p.sold}</td>
+                  <td><span className={'hb-badge ' + (p.active ? 'ok' : '')}>{p.active ? 'แสดง' : 'ซ่อน'}</span></td>
+                  <td className="act">
+                    <button className="hb-ico-btn" onClick={() => setEdit(p)} title="แก้ไข" aria-label="แก้ไข"><Ico n="edit" s={16} /></button>
+                    <button className="hb-ico-btn danger" onClick={() => confirm(`ลบ “${p.name}” และสต็อกทั้งหมด?`) && run(() => api('/api/hub/products/' + p.id, 'DELETE'), 'ลบแล้ว')} title="ลบ" aria-label="ลบ"><Ico n="trash" s={16} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {edit && <ProductModal p={edit === 'new' ? null : edit} onClose={() => setEdit(null)} run={run} />}
+      {stockId && <StockModal pid={stockId} products={products} limits={limits} run={run} say={say} onClose={() => setStockId(null)} />}
+    </section>
   );
 }
 

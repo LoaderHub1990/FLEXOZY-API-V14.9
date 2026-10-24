@@ -35,18 +35,25 @@ export default function PublicShop({ initial }) {
           {shop.logo ? <img src={shop.logo} alt="" /> : <div className="ph">{shop.name.slice(0, 1).toUpperCase()}</div>}
           <div><h1>{shop.name}</h1>{shop.tagline && <p>{shop.tagline}</p>}</div>
         </div>
-        <div className="dc-live" style={{ margin: '0 0 12px 4px' }}>อัปเดตสด</div>
+        <div className="hb-chips">
+          <span className="dc-live">อัปเดตสด</span>
+          <span className="hb-badge">สินค้า {shop.products.length} รายการ</span>
+          <span className="hb-badge ok">พร้อมขาย {shop.products.filter((p) => p.in_stock).length}</span>
+        </div>
         <div className="hb-list">
           {shop.products.length === 0 && <div className="hb-item"><span className="nm">ยังไม่มีสินค้า</span></div>}
           {shop.products.map((p) => (
-            <div key={p.id + ':' + (flash[p.id] || 0)} className={'hb-item' + (flash[p.id] ? ' flash' : '')}>
-              <div className="em">{p.emoji ? <Emo v={p.emoji} size={26} /> : <span>🛍️</span>}</div>
+            <div key={p.id + ':' + (flash[p.id] || 0)} className={'hb-item' + (flash[p.id] ? ' flash' : '') + (p.in_stock ? '' : ' out')}>
+              <div className="em">{p.emoji ? <Emo v={p.emoji} size={30} /> : <span>🛍️</span>}</div>
               <div className="nm"><b>{p.name}</b>{p.description && <span>{p.description}</span>}</div>
-              <div><div className="pr">฿{baht(p.price_baht)}</div><div className="st" style={{ color: p.in_stock ? '#4ade80' : '#f87171' }}>{p.in_stock ? `เหลือ ${p.stock}` : 'หมด'}</div></div>
+              <div className="ft" style={{ gridColumn: '1 / -1' }}>
+                <div className="pr">฿{baht(p.price_baht)}</div>
+                <div className="st" style={{ color: p.in_stock ? '#4ade80' : '#f87171' }}>{p.in_stock ? `เหลือ ${p.stock}` : 'หมด'}</div>
+              </div>
             </div>
           ))}
         </div>
-        <p style={{ textAlign: 'center', marginTop: 28, fontSize: 12.5, color: '#71717a' }}>ซื้อสินค้าได้ผ่านบอทในเซิร์ฟเวอร์ Discord ของร้าน · ขับเคลื่อนโดย Flexozy Shop</p>
+        <p className="hb-shop-foot">ซื้อสินค้าได้ผ่านบอทในเซิร์ฟเวอร์ Discord ของร้าน · ขับเคลื่อนโดย Flexozy Shop</p>
       </div>
     </div>
   );
