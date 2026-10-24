@@ -34,7 +34,6 @@ const TABS = [
   ['buttons', 'ปุ่มบนบอท', 'cursor', 'ชื่อและอีโมจิของปุ่มในแผง Discord'],
   ['discord', 'เซิร์ฟเวอร์ & บอท', 'chat', 'เลือกเซิร์ฟเวอร์ที่มีบอท แล้วตั้งค่าห้อง'],
   ['topup', 'เติมเงิน', 'coin', 'ตั้งเบอร์ TrueMoney รับเงิน'],
-  ['api', 'API', 'code', 'ลิงก์เช็คสต็อกร้านของคุณ'],
 ];
 
 function Copy({ text, label = 'คัดลอก' }) {
@@ -147,7 +146,6 @@ export default function Dashboard({ base = '/shop' }) {
               )}
               {tab === 'discord' && <section className="hb-pn"><DiscordTab shop={shop} d={d} run={run} /></section>}
               {tab === 'topup' && <section className="hb-pn"><TopupTab shop={shop} run={run} /></section>}
-              {tab === 'api' && <section className="hb-pn"><ApiTab d={d} shop={shop} /></section>}
               </div>
               
             </>
@@ -532,18 +530,6 @@ function TopupTab({ shop, run }) {
         <button className="hb-btn" disabled={ph !== '' && !ok} onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', { topup_phone: ph, topup_enabled: ok && on }), 'บันทึกการตั้งค่าเติมเงินแล้ว')}>บันทึก</button>
         <span className={'hb-badge ' + (shop.topup_enabled ? 'ok' : 'warn')}>{shop.topup_enabled ? `เปิดอยู่ · ${shop.topup_phone}` : 'ปิดอยู่'}</span>
       </div>
-    </div>
-  );
-}
-
-function ApiTab({ d, shop }) {
-  const ex = `curl ${d.urls.api}`;
-  return (
-    <div className="hb-f">
-      <p className="hb-sub" style={{ margin: 0 }}>เช็คสต็อกร้านของคุณจากที่ไหนก็ได้ (เปิด CORS ไว้แล้ว) — ใส่ <code>?since={shop.version}</code> เพื่อถามว่ามีอะไรเปลี่ยนไหม</p>
-      <div className="hb-code">{d.urls.api}<Copy text={d.urls.api} /></div>
-      <div className="hb-code">{ex}<Copy text={ex} /></div>
-      <div className="hb-code">{d.urls.page}<Copy text={d.urls.page} /></div>
     </div>
   );
 }
