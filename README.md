@@ -103,3 +103,22 @@ node scripts/e2e.mjs http://localhost:3000
 ## API Key สำหรับบอท Discord (v14.15)
 `/admin` → แท็บ **API Key** → สร้างคีย์ (รูปแบบ `fxk_...`, แสดงเต็มครั้งเดียว, เก็บเป็น hash) แล้วใส่ใน `.env` ของบอทเป็น `BOT_API_SECRET=fxk_...`
 บอทส่ง `Authorization: Bot <คีย์>` + `X-Discord-Id` — ไม่ต้องตั้ง env ใน Vercel / Redeploy · เพิกถอนมีผลภายใน 1 นาที · `BOT_API_SECRET` ใน env แบบเดิมยังใช้ได้
+
+---
+
+## Hub — ร้านค้าบอท Discord สำหรับบุคคลทั่วไป (shop.flexozy.site)
+
+คนทั่วไปล็อกอินด้วย Discord (+ แคปช่า) → สร้างร้าน → เพิ่มสินค้า/สต็อก → ใส่ไอดีเซิร์ฟเวอร์ → บอทสร้างแผงร้านให้เอง
+
+| ส่วน | ที่อยู่ |
+|---|---|
+| หน้าสมัคร (อนิเมชันแสงสาด → วาดโลโก้) | `shop.flexozy.site` |
+| แดชบอร์ดเจ้าของร้าน (เข้าได้เฉพาะบัญชี Discord ที่ล็อกอิน) | `shop.flexozy.site/dashboard` |
+| หน้าร้านสาธารณะ (สต็อกสด) | `shop.flexozy.site/<ชื่อร้าน>` |
+| API เช็คสต็อก | `flexozy.site/api/v1/shop/<ชื่อร้าน>` · รายชื่อร้าน `flexozy.site/api/v1/shop` |
+
+**ตั้งค่า:** (1) เพิ่มโดเมน `shop.flexozy.site` ในโปรเจกต์ Vercel เดิม (2) เพิ่ม Redirect `https://shop.flexozy.site/api/auth/discord/callback` ใน Discord Developer Portal (3) ตั้ง `HUB_HOST`, `BOT_CLIENT_ID`, `SHOP_FEE_PERCENT` ตาม `.env.example` — ตารางสร้างอัตโนมัติ
+
+**API เช็คสต็อก** `GET /api/v1/shop/<slug>` → ชื่อ รูป สีธีม ชื่อปุ่ม สินค้า (`price_baht`, `stock`, `emoji`, `in_stock`) และ `version` · ต่อท้าย `?since=<version>` ถ้าไม่มีอะไรเปลี่ยนจะได้ `{"unchanged":true}` · เปิด CORS
+
+**ฝั่งบอท:** บอทเดียวรองรับทุกเซิร์ฟเวอร์ ถามเว็บทุก 5 วินาที (`GET /api/bot/shops`) → ตรวจว่าเจ้าของร้านเป็นเจ้าของ/มีสิทธิ์ Manage Server ในเซิร์ฟเวอร์นั้นจริง → สร้างไฟล์ `data/guilds/<guildId>.json` → โพสต์/แก้แผงร้านในห้องที่กำหนด · ซื้อ = `POST /api/bot/shop/buy` หักกระเป๋าเงินเดียวกับเว็บ โอนเข้ากระเป๋าเจ้าของร้าน (หักค่าธรรมเนียมตาม `SHOP_FEE_PERCENT`)

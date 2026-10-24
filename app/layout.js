@@ -1,4 +1,5 @@
 import './globals.css';
+import { headers } from 'next/headers';
 import { getUser } from '@/lib/auth';
 import { getSettings } from '@/lib/shop';
 import Shell from '@/components/Shell';
@@ -31,6 +32,21 @@ export async function generateMetadata() {
 const earlyScript = `document.documentElement.classList.add('js');setTimeout(function(){if(document.documentElement.dataset.ready!=='1')document.documentElement.classList.add('rv-fb')},6000);`;
 
 export default async function RootLayout({ children }) {
+  // โดเมน Hub (shop.flexozy.site) ใช้โครงหน้าของตัวเอง ไม่มีเมนู/Shell ของร้านหลัก
+  if ((await headers()).get('x-hub') === '1') {
+    return (
+      <html lang="th" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="theme-color" content="#000000" />
+        </head>
+        <body className="hub">{children}</body>
+      </html>
+    );
+  }
   const [user, settings] = await Promise.all([getUser(), getSettings()]);
   const u = user && { id: user.id, username: user.username, role: user.role, balance: user.balance, discord: publicDiscord(user), profile: publicProfile(user) };
   return (
