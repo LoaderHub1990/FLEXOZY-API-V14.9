@@ -62,14 +62,14 @@ export default function Captcha({ onToken, rerun = 0 }) {
     (async () => {
       setSt('working'); setErr(''); cb.current('');
       try {
-        const c = await api('/api/captcha/challenge');
+        const c = await api('/api/v1/shop/hub/captcha/challenge');
         if (!alive.v) return;
         if (c.mode === 'turnstile') { setMode('turnstile'); setSiteKey(c.siteKey); return; }
         setMode('pow');
         const t0 = Date.now();
         const nonce = await solve(c.id, c.d);
         await sleep(Math.max(0, 1200 - (Date.now() - t0))); // ให้เห็นขั้นตอนตรวจสอบสักครู่
-        const r = await api('/api/captcha/verify', 'POST', { id: c.id, ts: c.ts, d: c.d, sig: c.sig, nonce });
+        const r = await api('/api/v1/shop/hub/captcha/verify', 'POST', { id: c.id, ts: c.ts, d: c.d, sig: c.sig, nonce });
         if (!alive.v) return;
         cb.current(r.token); setSt('ok');
       } catch (e) {
@@ -95,7 +95,7 @@ export default function Captcha({ onToken, rerun = 0 }) {
         sitekey: siteKey, theme: 'dark', language: 'th',
         callback: async (resp) => {
           try {
-            const r = await api('/api/captcha/verify', 'POST', { turnstile: resp });
+            const r = await api('/api/v1/shop/hub/captcha/verify', 'POST', { turnstile: resp });
             if (!dead) { cb.current(r.token); setSt('ok'); }
           } catch (e) { if (!dead) { setSt('error'); setErr(e.message); } }
         },

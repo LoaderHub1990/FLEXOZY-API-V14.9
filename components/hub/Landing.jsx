@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import Captcha from '@/components/Captcha';
 import { Mark } from './Logo';
 import DiscordPreview from './DiscordPreview';
+import { Aurora, Sparks, useSpotlight } from './Fx';
+
+const TICKER = ['ส่งสินค้าอัตโนมัติ 24/7', 'สต็อกเรียลไทม์', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์', 'เติมเงิน TrueMoney', 'บอทสร้างแผงร้านเอง', 'API เดียวจบ', 'หน้าร้านส่วนตัว', 'ล็อกอิน Discord ปลอดภัย'];
 
 const DEMO = {
   shop: { name: 'Nova Store', tagline: 'ส่งออโต้ 24 ชม. · สต็อกสด', color: '#a855f7', logo: '', banner: '', buttons: { buy: { label: 'ซื้อสินค้า', emoji: '🛒' }, stock: { label: 'เช็คสต็อก', emoji: '📦' }, balance: { label: 'ยอดเงิน', emoji: '💰' }, topup: { label: 'เติมเงิน', emoji: '💳' } } },
@@ -55,6 +58,7 @@ export default function Landing() {
   const [open, setOpen] = useState(0);
   const [slug, setSlug] = useState('');
   const root = useRef(null);
+  useSpotlight(root);
 
   useEffect(() => {
     const p = new URLSearchParams(location.search).get('auth_error');
@@ -82,7 +86,7 @@ export default function Landing() {
     if (!token || busy) return;
     setBusy(true);
     try { slug ? localStorage.setItem('hb-claim', slug) : localStorage.removeItem('hb-claim'); } catch {} // ชื่อลิงก์ที่อยากได้ → ใช้ตอนสร้างร้าน
-    location.href = `/api/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
+    location.href = `/api/v1/shop/hub/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
   };
 
   return (
@@ -101,6 +105,7 @@ export default function Landing() {
         </div>
       )}
 
+      <Aurora /><Sparks />
       <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
 
       <header className="lp-nav">
@@ -129,13 +134,15 @@ export default function Landing() {
             <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))} placeholder="yourname" maxLength={24} autoComplete="off" spellCheck={false} aria-label="ชื่อลิงก์ร้าน" />
             <button type="submit" disabled={!token || busy}>{busy ? 'กำลังไป Discord…' : !token ? 'กำลังตรวจสอบ…' : <>Get Started<Ic n="arrow" s={15} /></>}</button>
           </form>
-          <div className="lp-cap"><Captcha onToken={setToken} /></div>
+          <div className="lp-capbox"><Captcha onToken={setToken} /></div>
           <small className="lp-note">ล็อกอินด้วย Discord · เว้นว่างไว้ = ใช้ชื่อ Discord ของคุณเป็นลิงก์ร้าน</small>
 
           <div className="lp-stats lp-rv">
             {[['24/7', 'ส่งสินค้าอัตโนมัติ'], ['< 5s', 'สต็อกอัปเดตเรียลไทม์'], ['GIF', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์']].map(([n, t]) => <div key={t}><b>{n}</b><span>{t}</span></div>)}
           </div>
         </section>
+
+        <div className="fx-marquee" aria-hidden="true"><div>{[...TICKER, ...TICKER].map((t, i) => <span key={i}>{t}</span>)}</div></div>
 
         <section className="lp-sec" id="preview">
           <div className="lp-wrap narrow">

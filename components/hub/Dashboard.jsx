@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { api } from '@/components/api';
 import { Mark, Emo } from './Logo';
 import DiscordPreview from './DiscordPreview';
+import { Aurora, Sparks, useSpotlight } from './Fx';
 
 const GuildCtx = createContext('');
 const baht = (s) => (Number(s) / 100).toLocaleString('th-TH', { maximumFractionDigits: 2 });
@@ -62,11 +63,13 @@ export default function Dashboard({ base = '/shop' }) {
   const [tab, setTab] = useState('overview');
   const [toast, setToast] = useState(null);
   const ver = useRef(0);
+  const rootRef = useRef(null);
+  useSpotlight(rootRef);
 
   const say = (msg, bad) => { setToast({ msg, bad }); setTimeout(() => setToast(null), 2600); };
   const load = useCallback(async (force) => {
     try {
-      const r = await api('/api/hub/me' + (!force && ver.current ? `?since=${ver.current}` : ''));
+      const r = await api('/api/v1/shop/hub/me' + (!force && ver.current ? `?since=${ver.current}` : ''));
       if (r.unchanged) return;
       ver.current = r.shop?.version || 0;
       setD(r);
@@ -86,7 +89,7 @@ export default function Dashboard({ base = '/shop' }) {
     try { await fn(); await load(true); if (okMsg) say(okMsg); return true; }
     catch (e) { say(e.message, true); return false; }
   };
-  const logout = async () => { await api('/api/auth/logout', 'POST', {}); location.href = `${base}/login`; };
+  const logout = async () => { await api('/api/v1/shop/hub/auth/logout', 'POST', {}); location.href = `${base}/login`; };
 
   if (!d) return <div className="hb ready" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}><div className="hb-loading"><Mark size={42} /><span>กำลังโหลด…</span></div></div>;
   const { shop, products, user } = d;
@@ -94,7 +97,8 @@ export default function Dashboard({ base = '/shop' }) {
 
   return (
     <GuildCtx.Provider value={shop?.guild_id || ''}>
-    <div className="hb ready">
+    <div className="hb ready" ref={rootRef}>
+      <Aurora /><Sparks count={30} />
       <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
       <div className="hb-app">
         <aside className="hb-sb">
@@ -130,6 +134,7 @@ export default function Dashboard({ base = '/shop' }) {
                 </div>
               </header>
               {!shop.active && <div className="hb-alert bad">ร้านนี้ถูกระงับโดยผู้ดูแลระบบ</div>}
+              <div className="hb-tabbody" key={tab}>
 
               {tab === 'overview' && <Overview shop={shop} products={products} d={d} go={setTab} />}
               {tab === 'products' && <ProductsTab products={products} limits={d.limits} fee={d.fee} run={run} say={say} />}
@@ -143,6 +148,8 @@ export default function Dashboard({ base = '/shop' }) {
               {tab === 'discord' && <section className="hb-pn"><DiscordTab shop={shop} d={d} run={run} /></section>}
               {tab === 'topup' && <section className="hb-pn"><TopupTab shop={shop} run={run} /></section>}
               {tab === 'api' && <section className="hb-pn"><ApiTab d={d} shop={shop} /></section>}
+              </div>
+              
             </>
           )}
         </main>
@@ -165,7 +172,7 @@ function CreateShop({ run, d }) {
         <p>ยินดีต้อนรับ <b>{d.user.name}</b> — ตั้งชื่อร้านแล้วเริ่มขายผ่านบอท Discord ได้เลย</p>
         <div className="hb-slugbox"><span>ลิงก์ร้านของคุณ</span><code>flexozy.site/<b>{slug}</b></code><em>{want ? 'ชื่อที่คุณเลือกจากหน้าแรก (ถ้าถูกใช้แล้วจะแจ้งให้เปลี่ยน)' : 'สร้างจากชื่อ Discord อัตโนมัติ'}</em></div>
         <label className="hb-fl">ชื่อร้าน<input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อร้านที่แสดง" maxLength={40} /></label>
-        <button className="hb-go wide" onClick={() => run(() => api('/api/hub/shop', 'POST', { name, slug: want || undefined }).then((r) => { try { localStorage.removeItem('hb-claim'); } catch {} return r; }), 'สร้างร้านแล้ว')}>สร้างร้าน <span aria-hidden="true">→</span></button>
+        <button className="hb-go wide" onClick={() => run(() => api('/api/v1/shop/hub/shop', 'POST', { name, slug: want || undefined }).then((r) => { try { localStorage.removeItem('hb-claim'); } catch {} return r; }), 'สร้างร้านแล้ว')}>สร้างร้าน <span aria-hidden="true">→</span></button>
       </div>
     </div>
   );
@@ -233,16 +240,16 @@ function ImageField({ label, kind, shop, run }) {
   const upload = (f) => {
     if (!f) return;
     const r = new FileReader();
-    r.onload = () => run(() => api('/api/hub/media', 'POST', { kind, data: r.result }), 'อัปโหลดแล้ว');
+    r.onload = () => run(() => api('/api/v1/shop/hub/media', 'POST', { kind, data: r.result }), 'อัปโหลดแล้ว');
     r.readAsDataURL(f);
   };
   return (
     <label>{label}
       <div className="hb-row">
         <input className="grow" style={{ flex: '1 1 200px' }} value={v} onChange={(e) => setV(e.target.value)} placeholder="https://… หรืออัปโหลดไฟล์" />
-        <button type="button" className="hb-btn ghost sm" onClick={() => run(() => api('/api/hub/shop', 'PUT', { [kind + '_url']: v }), 'บันทึกรูปแล้ว')}>ใช้ลิงก์</button>
+        <button type="button" className="hb-btn ghost sm" onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', { [kind + '_url']: v }), 'บันทึกรูปแล้ว')}>ใช้ลิงก์</button>
         <button type="button" className="hb-btn ghost sm" onClick={() => file.current.click()}>อัปโหลด</button>
-        {url && <button type="button" className="hb-btn danger sm" onClick={() => { setV(''); run(() => api('/api/hub/media/' + kind, 'DELETE'), 'ลบรูปแล้ว'); }}>ลบ</button>}
+        {url && <button type="button" className="hb-btn danger sm" onClick={() => { setV(''); run(() => api('/api/v1/shop/hub/media/' + kind, 'DELETE'), 'ลบรูปแล้ว'); }}>ลบ</button>}
         <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => { upload(e.target.files[0]); e.target.value = ''; }} />
       </div>
     </label>
@@ -262,7 +269,7 @@ function ShopTab({ shop, run }) {
       <ImageField label="โลโก้ร้าน (รูปสี่เหลี่ยมจัตุรัส)" kind="logo" shop={shop} run={run} />
       <ImageField label="แบนเนอร์" kind="banner" shop={shop} run={run} />
       <label className="hb-row" style={{ flexDirection: 'row' }}><input type="checkbox" checked={f.is_public} onChange={(e) => set('is_public', e.target.checked)} />แสดงร้านในรายการสาธารณะ (/api/v1/shop) — ปิดแล้วลิงก์ร้านยังเปิดได้</label>
-      <div><button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'PUT', f), 'บันทึกแล้ว')}>บันทึก</button></div>
+      <div><button className="hb-btn" onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', f), 'บันทึกแล้ว')}>บันทึก</button></div>
     </div>
   );
 }
@@ -276,7 +283,7 @@ function ProductModal({ p, onClose, run }) {
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }));
   const save = async () => {
     setBusy(true);
-    const ok = await run(() => (isNew ? api('/api/hub/products', 'POST', f) : api('/api/hub/products/' + p.id, 'PUT', f)), isNew ? 'เพิ่มสินค้าแล้ว' : 'บันทึกสินค้าแล้ว');
+    const ok = await run(() => (isNew ? api('/api/v1/shop/hub/products', 'POST', f) : api('/api/v1/shop/hub/products/' + p.id, 'PUT', f)), isNew ? 'เพิ่มสินค้าแล้ว' : 'บันทึกสินค้าแล้ว');
     setBusy(false);
     if (ok) onClose();
   };
@@ -305,7 +312,7 @@ function StockModal({ pid, products, limits, run, say, onClose }) {
   const [msg, setMsg] = useState(null);
   const file = useRef(null);
   const loadItems = useCallback(async () => {
-    try { setItems((await api(`/api/hub/products/${pid}/stock`)).items); } catch (e) { say(e.message, true); }
+    try { setItems((await api(`/api/v1/shop/hub/products/${pid}/stock`)).items); } catch (e) { say(e.message, true); }
   }, [pid]); // eslint-disable-line
   useEffect(() => { loadItems(); }, [loadItems, p?.stock]);
   if (!p) return null;
@@ -315,7 +322,7 @@ function StockModal({ pid, products, limits, run, say, onClose }) {
   const add = async () => {
     setMsg(null);
     try {
-      const r = await api(`/api/hub/products/${pid}/stock`, 'POST', { lines });
+      const r = await api(`/api/v1/shop/hub/products/${pid}/stock`, 'POST', { lines });
       setLines(''); setMsg({ t: 'ok', m: `เพิ่ม ${r.added} รายการแล้ว` });
       await run(async () => {});
     } catch (e) { setMsg({ t: 'err', m: e.message }); }
@@ -344,11 +351,11 @@ function StockModal({ pid, products, limits, run, say, onClose }) {
         <div className="hb-split">
           <b>ยังไม่ขาย ({p.stock})</b>
           <input className="hb-find" value={find} onChange={(e) => setFind(e.target.value)} placeholder="ค้นหาในสต็อก…" />
-          {p.stock > 0 && <button className="hb-btn danger sm" onClick={() => confirm('ลบสต็อกที่ยังไม่ขายทั้งหมดของสินค้านี้?') && run(() => api(`/api/hub/products/${pid}/stock`, 'DELETE'), 'ล้างสต็อกแล้ว')}>ลบทั้งหมด</button>}
+          {p.stock > 0 && <button className="hb-btn danger sm" onClick={() => confirm('ลบสต็อกที่ยังไม่ขายทั้งหมดของสินค้านี้?') && run(() => api(`/api/v1/shop/hub/products/${pid}/stock`, 'DELETE'), 'ล้างสต็อกแล้ว')}>ลบทั้งหมด</button>}
         </div>
         <div className="hb-stock-list">
           {items === null ? <div><span>กำลังโหลด…</span></div> : shown.length === 0 ? <div><span>{find ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีสต็อก'}</span></div> : shown.map((it) => (
-            <div key={it.id}><span>{it.content}</span><button onClick={() => run(() => api('/api/hub/stock/' + it.id, 'DELETE'))} aria-label="ลบ">ลบ</button></div>
+            <div key={it.id}><span>{it.content}</span><button onClick={() => run(() => api('/api/v1/shop/hub/stock/' + it.id, 'DELETE'))} aria-label="ลบ">ลบ</button></div>
           ))}
           {items && p.stock > items.length && !find && <div className="more"><span>แสดง {items.length} รายการแรก</span></div>}
         </div>
@@ -386,7 +393,7 @@ function ProductsTab({ products, limits, fee, run, say }) {
                   <td><span className={'hb-badge ' + (p.active ? 'ok' : '')}>{p.active ? 'แสดง' : 'ซ่อน'}</span></td>
                   <td className="act">
                     <button className="hb-ico-btn" onClick={() => setEdit(p)} title="แก้ไข" aria-label="แก้ไข"><Ico n="edit" s={16} /></button>
-                    <button className="hb-ico-btn danger" onClick={() => confirm(`ลบ “${p.name}” และสต็อกทั้งหมด?`) && run(() => api('/api/hub/products/' + p.id, 'DELETE'), 'ลบแล้ว')} title="ลบ" aria-label="ลบ"><Ico n="trash" s={16} /></button>
+                    <button className="hb-ico-btn danger" onClick={() => confirm(`ลบ “${p.name}” และสต็อกทั้งหมด?`) && run(() => api('/api/v1/shop/hub/products/' + p.id, 'DELETE'), 'ลบแล้ว')} title="ลบ" aria-label="ลบ"><Ico n="trash" s={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -413,7 +420,7 @@ function ButtonsTab({ shop, run }) {
           <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={b[k].emoji} onChange={(e) => set(k, 'emoji', e.target.value)} /><Emo v={b[k].emoji} size={22} /></div><EmojiPicker onPick={(v) => set(k, 'emoji', v)} /></label>
         </div>
       ))}
-      <div><button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'PUT', { buttons: b }), 'บันทึกปุ่มแล้ว — บอทจะอัปเดตแผงในไม่กี่วินาที')}>บันทึกปุ่ม</button></div>
+      <div><button className="hb-btn" onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', { buttons: b }), 'บันทึกปุ่มแล้ว — บอทจะอัปเดตแผงในไม่กี่วินาที')}>บันทึกปุ่ม</button></div>
     </div>
   );
 }
@@ -427,7 +434,7 @@ function EmojiPicker({ onPick }) {
   const [err, setErr] = useState('');
   useEffect(() => {
     if (!open || !gid || emojiCache[gid]) { if (emojiCache[gid]) setList(emojiCache[gid]); return; }
-    api(`/api/hub/guilds/${gid}`).then((r) => { emojiCache[gid] = r.emojis; setList(r.emojis); }).catch((e) => setErr(e.message));
+    api(`/api/v1/shop/hub/guilds/${gid}`).then((r) => { emojiCache[gid] = r.emojis; setList(r.emojis); }).catch((e) => setErr(e.message));
   }, [open, gid]);
   if (!gid) return <small className="hb-sub" style={{ margin: '6px 0 0' }}>เชื่อมเซิร์ฟเวอร์ก่อนเพื่อใช้อีโมจิของเซิร์ฟเวอร์</small>;
   return (
@@ -453,12 +460,12 @@ function DiscordTab({ shop, d, run }) {
   const [chs, setChs] = useState(null);
   const [c, setC] = useState(shop.channel_id || '');
   useEffect(() => {
-    api('/api/hub/guilds').then(setGl).catch((e) => setErr(e.message));
+    api('/api/v1/shop/hub/guilds').then(setGl).catch((e) => setErr(e.message));
   }, []);
   useEffect(() => {
     setChs(null);
     if (!sel) return;
-    api(`/api/hub/guilds/${sel}`).then((r) => setChs(r.channels)).catch(() => setChs([]));
+    api(`/api/v1/shop/hub/guilds/${sel}`).then((r) => setChs(r.channels)).catch(() => setChs([]));
   }, [sel]);
   const st = !shop.guild_id ? ['warn', 'ยังไม่ได้เลือกเซิร์ฟเวอร์']
     : !shop.bot_in_guild ? ['warn', 'รอบอทตรวจสอบเซิร์ฟเวอร์']
@@ -471,7 +478,7 @@ function DiscordTab({ shop, d, run }) {
         <p className="hb-sub" style={{ margin: 0 }}>เซิร์ฟเวอร์ที่คุณเป็นเจ้าของ หรือมีสิทธิ์ Manage Server — เรียงเซิร์ฟเวอร์ที่มีบอทอยู่ไว้ก่อน</p>
         <span className={'hb-badge ' + st[0]}>{st[1]}</span>
       </div>
-      {err && <div className="hb-alert bad">{err} {err.includes('ล็อกอิน') && <a className="hb-btn sm" href="/api/auth/logout" onClick={(e) => { e.preventDefault(); api('/api/auth/logout', 'POST', {}).then(() => { location.href = '/shop/login'; }); }}>ล็อกอินใหม่</a>}</div>}
+      {err && <div className="hb-alert bad">{err} {err.includes('ล็อกอิน') && <a className="hb-btn sm" href="#" onClick={(e) => { e.preventDefault(); api('/api/v1/shop/hub/auth/logout', 'POST', {}).then(() => { location.href = '/shop/login'; }); }}>ล็อกอินใหม่</a>}</div>}
       {!gl && !err && <p className="hb-sub">กำลังโหลดเซิร์ฟเวอร์ของคุณ…</p>}
       {gl && !gl.guilds.length && <p className="hb-sub">ไม่พบเซิร์ฟเวอร์ที่คุณจัดการได้</p>}
       {gl && (
@@ -497,7 +504,7 @@ function DiscordTab({ shop, d, run }) {
                 </select>
               ) : <input value={c} onChange={(e) => setC(e.target.value.trim())} placeholder="ไอดีห้อง (โหลดรายชื่อห้องไม่ได้)" inputMode="numeric" />}
             </label>
-            <div className="hb-row"><button className="hb-btn" disabled={!c} onClick={() => run(() => api('/api/hub/shop', 'PUT', { guild_id: sel, channel_id: c }), 'บันทึกแล้ว — บอทจะสร้างไฟล์และแผงร้านให้อัตโนมัติ')}>บันทึกและเชื่อมบอท</button></div>
+            <div className="hb-row"><button className="hb-btn" disabled={!c} onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', { guild_id: sel, channel_id: c }), 'บันทึกแล้ว — บอทจะสร้างไฟล์และแผงร้านให้อัตโนมัติ')}>บันทึกและเชื่อมบอท</button></div>
           </>
         ) : (
           <div className="hb-alert">บอทยังไม่ได้อยู่ใน <b>{g.name}</b> {invite(sel) ? <a className="hb-btn sm" href={invite(sel)} target="_blank" rel="noreferrer">เชิญบอทเข้าเซิร์ฟเวอร์นี้ ↗</a> : <span className="hb-badge warn">ผู้ดูแลยังไม่ได้ตั้งค่า BOT_CLIENT_ID</span>}</div>
@@ -518,7 +525,7 @@ function TopupTab({ shop, run }) {
       <label>เบอร์ TrueMoney รับเงิน<input value={ph} onChange={(e) => setPh(e.target.value.replace(/[^\d]/g, '').slice(0, 10))} placeholder="0812345678" inputMode="numeric" /></label>
       <label className="hb-row" style={{ flexDirection: 'row' }}><input type="checkbox" checked={on} disabled={!ok} onChange={(e) => setOn(e.target.checked)} />เปิดปุ่มเติมเงินในร้านนี้</label>
       <div className="hb-row">
-        <button className="hb-btn" disabled={ph !== '' && !ok} onClick={() => run(() => api('/api/hub/shop', 'PUT', { topup_phone: ph, topup_enabled: ok && on }), 'บันทึกการตั้งค่าเติมเงินแล้ว')}>บันทึก</button>
+        <button className="hb-btn" disabled={ph !== '' && !ok} onClick={() => run(() => api('/api/v1/shop/hub/shop', 'PUT', { topup_phone: ph, topup_enabled: ok && on }), 'บันทึกการตั้งค่าเติมเงินแล้ว')}>บันทึก</button>
         <span className={'hb-badge ' + (shop.topup_enabled ? 'ok' : 'warn')}>{shop.topup_enabled ? `เปิดอยู่ · ${shop.topup_phone}` : 'ปิดอยู่'}</span>
       </div>
     </div>

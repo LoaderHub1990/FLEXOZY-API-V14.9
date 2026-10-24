@@ -341,3 +341,98 @@ html:has(.lp){scroll-behavior:smooth;scroll-padding-top:80px}
 .hb-eg button{position:relative;display:grid;place-items:center;aspect-ratio:1;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer;transition:background .15s,transform .15s}
 .hb-eg button:hover{background:rgba(255,255,255,.08);transform:scale(1.08)}.hb-eg button img{width:30px;height:30px}
 .hb-eg button em{position:absolute;right:2px;bottom:1px;font-size:8px;font-style:normal;font-weight:700;color:#c084fc}
+
+/* =====================================================================
+   FX LAYER — เอฟเฟกต์ทั้งหมด (ออโรร่า, ประกาย, สปอตไลต์ตามเมาส์, ขอบเรืองแสง)
+   ===================================================================== */
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.hb ::selection{background:rgba(168,85,247,.45);color:#fff}
+.hb{scrollbar-width:thin;scrollbar-color:#3b2a63 transparent}
+body.hub::-webkit-scrollbar,.hb *::-webkit-scrollbar{width:10px;height:10px}
+body.hub::-webkit-scrollbar-thumb,.hb *::-webkit-scrollbar-thumb{background:#2b1f4a;border-radius:99px;border:2px solid #000}
+body.hub::-webkit-scrollbar-track{background:#000}
+
+/* ออโรร่า + ตาราง */
+.fx-aurora{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;background:#000}
+.fx-aurora i{position:absolute;width:62vmax;height:62vmax;border-radius:50%;filter:blur(90px);opacity:.5;will-change:transform;animation:fxDrift 22s ease-in-out infinite alternate}
+.fx-aurora i:nth-child(1){left:-18vmax;top:-26vmax;background:radial-gradient(circle,#6d28d9,transparent 65%)}
+.fx-aurora i:nth-child(2){right:-22vmax;top:8vmax;background:radial-gradient(circle,#4338ca,transparent 65%);animation-duration:28s;animation-delay:-8s;opacity:.38}
+.fx-aurora i:nth-child(3){left:20vw;bottom:-38vmax;background:radial-gradient(circle,#a21caf,transparent 65%);animation-duration:32s;animation-delay:-14s;opacity:.3}
+.fx-aurora b{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 18%,#000,transparent 78%);mask-image:radial-gradient(ellipse 70% 60% at 50% 18%,#000,transparent 78%)}
+@keyframes fxDrift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(6vmax,4vmax,0) scale(1.12)}100%{transform:translate3d(-4vmax,8vmax,0) scale(.95)}}
+.fx-sparks{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.lp,.hb{background:transparent!important}
+
+/* การ์ด: สปอตไลต์ตามเมาส์ + ขอบเรืองแสง */
+.hb-pn,.hb-stat,.hb-card,.lp-card,.hb-item,.hb-g,.lp-stats div,.lp-preview,.hb-create-card,.fx-card{position:relative;isolation:isolate}
+.hb-pn::before,.hb-stat::before,.hb-card::before,.lp-card::before,.hb-item::before,.hb-g::before,.lp-stats div::before,.lp-preview::before,.hb-create-card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),rgba(168,85,247,.2),transparent 62%)}
+.hb-pn:hover::before,.hb-stat:hover::before,.hb-card:hover::before,.lp-card:hover::before,.hb-item:hover::before,.hb-g:hover::before,.lp-stats div:hover::before,.lp-preview:hover::before,.hb-create-card:hover::before{opacity:1}
+.hb-pn::after,.lp-card::after,.hb-stat::after,.hb-create-card::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),rgba(192,132,252,.9),transparent 65%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.hb-pn:hover::after,.lp-card:hover::after,.hb-stat:hover::after,.hb-create-card:hover::after{opacity:1}
+
+/* ---------- หน้าล็อกอิน / แรก ---------- */
+.lp-bigmark{position:relative;animation:fxFloat 6s ease-in-out infinite}
+.lp-bigmark::before{content:"";position:absolute;left:-40px;top:50%;width:190px;height:190px;margin-top:-95px;border-radius:50%;z-index:-1;
+  background:conic-gradient(from var(--ang),transparent 0 55%,rgba(168,85,247,.75),rgba(99,102,241,.6),transparent);filter:blur(34px);animation:fxSpin 7s linear infinite}
+.lp-bigmark .hb-mark{filter:drop-shadow(0 0 18px rgba(255,255,255,.35))}
+@keyframes fxSpin{to{--ang:360deg}}@keyframes fxFloat{50%{transform:translateY(-10px)}}
+.lp-hero h1 span{background-size:220% 100%;animation:fxShimmer 5s linear infinite}
+@keyframes fxShimmer{to{background-position:-220% 0}}
+.lp-pill{position:relative;overflow:hidden}.lp-pill::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.28),transparent 70%);transform:translateX(-120%);animation:fxShine 4.5s ease-in-out infinite}
+@keyframes fxShine{55%,100%{transform:translateX(120%)}}
+
+.lp-claim{position:relative;border:1.5px solid transparent!important;
+  background:linear-gradient(#0a0712,#0a0712) padding-box,conic-gradient(from var(--ang),rgba(255,255,255,.08) 0 30%,#a855f7 45%,#6366f1 55%,rgba(255,255,255,.08) 70% 100%) border-box!important;
+  animation:fxSpin 5s linear infinite;box-shadow:0 30px 80px -34px rgba(124,58,237,.9)}
+.lp-claim:focus-within{box-shadow:0 0 0 5px rgba(168,85,247,.14),0 30px 80px -30px rgba(168,85,247,1)}
+.lp-claim button,.lp-btn.primary,.lp-btn.solid,.hb-go,.hb-btn:not(.ghost):not(.danger){position:relative;overflow:hidden}
+.lp-claim button::after,.lp-btn.primary::after,.hb-go::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.35),transparent 65%);transform:translateX(-130%);transition:transform .7s}
+.lp-claim button:hover::after,.lp-btn.primary:hover::after,.hb-go:hover::after{transform:translateX(130%)}
+.lp-capbox{margin-top:16px;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);backdrop-filter:blur(8px);width:min(480px,100%)}
+
+.fx-marquee{position:relative;overflow:hidden;padding:22px 0;border-block:1px solid rgba(255,255,255,.06);background:linear-gradient(90deg,#000,transparent 12%,transparent 88%,#000);-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.fx-marquee div{display:flex;gap:44px;width:max-content;animation:fxMarq 34s linear infinite}
+.fx-marquee:hover div{animation-play-state:paused}
+.fx-marquee span{display:inline-flex;align-items:center;gap:12px;font-size:15px;font-weight:600;color:#a1a1aa;white-space:nowrap}
+.fx-marquee span::before{content:"✦";color:#a855f7;text-shadow:0 0 14px #a855f7}
+@keyframes fxMarq{to{transform:translateX(-50%)}}
+
+.lp-card .lp-chip{transition:transform .35s cubic-bezier(.16,1,.3,1),box-shadow .35s}
+.lp-card:hover .lp-chip{transform:translateY(-3px) rotate(-6deg) scale(1.08);box-shadow:0 10px 30px -8px rgba(168,85,247,.8)}
+.lp-card.step i{box-shadow:0 0 20px -4px rgba(168,85,247,.6)}
+.lp-head h2{background:linear-gradient(180deg,#fff,#a1a1aa);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp-cta{position:relative;overflow:hidden}.lp-cta::before{content:"";position:absolute;inset:-50%;background:conic-gradient(from var(--ang),transparent,rgba(168,85,247,.28),transparent 30%);animation:fxSpin 8s linear infinite;z-index:0}
+.lp-cta>*{position:relative;z-index:1}
+
+/* ---------- แดชบอร์ด ---------- */
+.hb-tabbody{animation:fxIn .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes fxIn{from{opacity:0;transform:translateY(14px);filter:blur(6px)}}
+.hb-tabbody>*{animation:fxIn .55s cubic-bezier(.16,1,.3,1) both}
+.hb-tabbody>*:nth-child(2){animation-delay:.06s}.hb-tabbody>*:nth-child(3){animation-delay:.12s}.hb-tabbody>*:nth-child(4){animation-delay:.18s}
+.hb-stats .hb-stat{animation:fxIn .6s cubic-bezier(.16,1,.3,1) both}.hb-stats .hb-stat:nth-child(2){animation-delay:.07s}.hb-stats .hb-stat:nth-child(3){animation-delay:.14s}.hb-stats .hb-stat:nth-child(4){animation-delay:.21s}
+.hb-pagehead h1{background:linear-gradient(90deg,#fff,#d8b4fe 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hb-sb{background:linear-gradient(180deg,rgba(20,12,38,.72),rgba(6,4,12,.82))!important}
+.hb-nav2 button{overflow:hidden}
+.hb-nav2 button.on::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:0 4px 4px 0;background:linear-gradient(#c084fc,#6366f1);box-shadow:0 0 14px #a855f7}
+.hb-nav2 button:hover .hb-ic{transform:scale(1.15) rotate(-4deg)}.hb-nav2 button .hb-ic{transition:transform .25s}
+.hb-hero2{box-shadow:0 30px 80px -40px color-mix(in srgb,var(--c,#8b6cf0) 70%,transparent)}
+.hb-hero2::before{content:"";position:absolute;inset:-60%;background:conic-gradient(from var(--ang),transparent 0 70%,rgba(255,255,255,.12),transparent);animation:fxSpin 9s linear infinite;pointer-events:none}
+.hb-hero2>*{position:relative}
+.hb-badge.ok::before{content:"";width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:hbPulse 1.8s infinite}
+.hb-pn{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.hb-g.on{box-shadow:0 0 0 1px rgba(168,85,247,.5),0 14px 40px -16px rgba(168,85,247,.8)}
+.hb-linkchip{box-shadow:0 10px 40px -20px rgba(168,85,247,.6)}
+.hb-btn:not(.ghost):not(.danger){background:linear-gradient(180deg,#fff,#e4e4e7)}
+.hb-toast{backdrop-filter:blur(14px);box-shadow:0 0 0 1px rgba(168,85,247,.3),0 20px 60px rgba(0,0,0,.7),0 0 40px -10px rgba(168,85,247,.6)}
+.hb-loading{position:relative;padding:34px}.hb-loading::before{content:"";position:absolute;left:50%;top:0;width:96px;height:96px;margin-left:-48px;border-radius:50%;border:2px solid transparent;border-top-color:#a855f7;border-right-color:rgba(168,85,247,.3);animation:fxSpin2 1.1s linear infinite;filter:drop-shadow(0 0 10px #a855f7)}
+@keyframes fxSpin2{to{transform:rotate(360deg)}}
+.hb-create-card{animation:fxIn .7s cubic-bezier(.16,1,.3,1) both}
+.hb-create-av{animation:fxFloat 5s ease-in-out infinite}
+
+@media(max-width:860px){.fx-aurora i{filter:blur(60px)}.hb-nav2 button.on::before{display:none}}
+@media(prefers-reduced-motion:reduce){.fx-aurora i,.lp-bigmark,.lp-bigmark::before,.lp-claim,.lp-hero h1 span,.lp-pill::after,.fx-marquee div,.lp-cta::before,.hb-hero2::before,.hb-create-av,.hb-tabbody,.hb-tabbody>*,.hb-stats .hb-stat{animation:none!important}}
