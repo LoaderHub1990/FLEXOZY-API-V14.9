@@ -257,10 +257,14 @@ function ImageField({ label, kind, shop, run }) {
 }
 
 function ShopTab({ shop, run }) {
-  const [f, setF] = useState({ name: shop.name, tagline: shop.tagline, color: shop.color, is_public: shop.is_public });
+  const [f, setF] = useState({ slug: shop.slug, name: shop.name, tagline: shop.tagline, color: shop.color, is_public: shop.is_public });
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }));
   return (
     <div className="hb-f">
+      <label>ลิงก์ร้านของคุณ
+        <div className="hb-slugedit"><span>flexozy.site/</span><input value={f.slug} onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))} maxLength={24} spellCheck={false} /></div>
+        <small className="hb-sub" style={{ margin: 0 }}>a-z 0-9 และ - ยาว 3-24 ตัว · ถ้าเปลี่ยน ลิงก์เก่าและ API ของลิงก์เก่าจะใช้ไม่ได้ (บอทจะอัปเดตให้เองจาก /api/v1/shop)</small>
+      </label>
       <div className="hb-two">
         <label>ชื่อร้าน<input value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={40} /></label>
         <label>สีธีม<div className="hb-row"><input type="color" value={f.color} onChange={(e) => set('color', e.target.value)} /><code>{f.color}</code></div></label>

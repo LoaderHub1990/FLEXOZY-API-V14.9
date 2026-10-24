@@ -436,3 +436,8 @@ body.hub::-webkit-scrollbar-track{background:#000}
 
 @media(max-width:860px){.fx-aurora i{filter:blur(60px)}.hb-nav2 button.on::before{display:none}}
 @media(prefers-reduced-motion:reduce){.fx-aurora i,.lp-bigmark,.lp-bigmark::before,.lp-claim,.lp-hero h1 span,.lp-pill::after,.fx-marquee div,.lp-cta::before,.hb-hero2::before,.hb-create-av,.hb-tabbody,.hb-tabbody>*,.hb-stats .hb-stat{animation:none!important}}
+
+.hb-slugedit{display:flex;align-items:center;border-radius:12px;background:#0f0c18;border:1px solid var(--hb-line);padding-left:13px;transition:border-color .2s,box-shadow .2s}
+.hb-slugedit:focus-within{border-color:rgba(168,85,247,.6);box-shadow:0 0 0 3px rgba(168,85,247,.15)}
+.hb-slugedit span{color:#a1a1aa;font-size:14px;white-space:nowrap}
+.hb-f .hb-slugedit input{border:0!important;box-shadow:none!important;background:transparent!important;padding-left:2px;color:#c084fc;font-weight:600}

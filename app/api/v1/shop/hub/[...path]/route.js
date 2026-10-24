@@ -63,7 +63,7 @@ async function handle(req, { params }) {
     return json({
       user: { id: user.id, name: user.display_name || user.discord_name || user.username, discord: publicDiscord(user) },
       shop: ownerShop(shop, user),
-      suggestedSlug: shop ? null : slugFromDiscord(user.discord_username || user.username),
+      suggestedSlug: shop ? null : slugFromDiscord([user.discord_username, user.discord_name, user.username]),
       products: shop ? await shopProducts(shop.id) : [],
       urls: shop && {
         page: `${site}/${shop.slug}`,
@@ -106,7 +106,7 @@ async function handle(req, { params }) {
     }
     for (let attempt = 0; attempt < 6 && !done; attempt++) {
       try {
-        await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, slugFromDiscord(user.discord_username || user.username, attempt), name]);
+        await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, slugFromDiscord([user.discord_username, user.discord_name, user.username], attempt), name]);
         done = true;
       } catch (e) {
         if (e.code !== '23505') throw e;
@@ -122,6 +122,11 @@ async function handle(req, { params }) {
     const b = await body(req);
     const sets = [], args = [];
     const set = (col, v) => { args.push(v); sets.push(`${col}=$${args.length}`); };
+    if ('slug' in b && String(b.slug).toLowerCase() !== String(shop.slug).toLowerCase()) {
+      const want = cleanSlug(b.slug);
+      if (await one('SELECT 1 FROM shops WHERE lower(slug)=$1 AND id<>$2', [want, shop.id])) throw new HttpError(409, `ชื่อ "${want}" ถูกใช้แล้ว ลองชื่ออื่น`);
+      set('slug', want);
+    }
     if ('name' in b) set('name', str(b.name, { min: 2, max: 40, name: 'ชื่อร้าน' }));
     if ('tagline' in b) set('tagline', str(b.tagline, { max: 120, name: 'คำอธิบาย' }));
     if ('color' in b) set('color', cleanColor(b.color));
