@@ -11,7 +11,7 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const base = (await headers()).get('x-hub-base') ?? '';
+  const base = (await headers()).get('x-hub-base') ?? '/shop';
   const u = await getUser();
   if (u?.discord_id) redirect(`${base}/dashboard`);
   return <Landing />;

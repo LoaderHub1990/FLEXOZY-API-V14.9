@@ -3,11 +3,8 @@ import { useEffect, useState } from 'react';
 import Captcha from '@/components/Captcha';
 import { Mark } from './Logo';
 
-const SLUG_OK = /^[a-z0-9][a-z0-9-]{2,23}$/;
-
 export default function Landing() {
   const [intro, setIntro] = useState('play'); // play | out | done
-  const [slug, setSlug] = useState('');
   const [token, setToken] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,14 +21,11 @@ export default function Landing() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const valid = SLUG_OK.test(slug);
   const go = () => {
-    if (!valid || !token || busy) return;
+    if (!token || busy) return;
     setBusy(true);
-    try { localStorage.setItem('hb-slug', slug); } catch {}
-    location.href = `/api/auth/discord?cap=${encodeURIComponent(token)}`;
+    location.href = `/api/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
   };
-  const shown = slug || 'yourname';
 
   return (
     <div className={'hb hb-land' + (intro === 'done' ? ' ready' : '')}>
@@ -52,7 +46,7 @@ export default function Landing() {
       <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
 
       <header className="hb-nav">
-        <a className="hb-brand" href="/"><Mark size={22} /><b>flexozy</b><span>.shop</span></a>
+        <a className="hb-brand" href="/shop/login"><Mark size={22} /><b>flexozy</b><span>.shop</span></a>
         <a className="hb-btn" href="#start">เริ่มต้นใช้งาน</a>
       </header>
 
@@ -64,17 +58,12 @@ export default function Landing() {
         {err && <div className="hb-err rv" style={{ '--d': 2 }}>{err}</div>}
 
         <form className="hb-claim rv" style={{ '--d': 3 }} onSubmit={(e) => { e.preventDefault(); go(); }}>
-          <span className="hb-claim-pre">shop.flexozy.site/</span>
-          <input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))}
-            placeholder="yourname" autoComplete="off" spellCheck="false" aria-label="ชื่อร้านในลิงก์" maxLength={24}
-          />
-          <button type="submit" className="hb-go" disabled={!valid || !token || busy}>
-            {busy ? 'กำลังไปที่ Discord…' : !token && valid ? 'กำลังตรวจสอบ…' : 'ล็อกอินด้วย Discord'} <span aria-hidden="true">→</span>
+          <span className="hb-claim-pre">flexozy.site/<b>ชื่อ Discord ของคุณ</b></span>
+          <button type="submit" className="hb-go" disabled={!token || busy}>
+            {busy ? 'กำลังไปที่ Discord…' : !token ? 'กำลังตรวจสอบ…' : 'ล็อกอินด้วย Discord'} <span aria-hidden="true">→</span>
           </button>
         </form>
-        <div className="hb-hint rv" style={{ '--d': 3 }}>{slug && !valid ? 'ชื่อต้องยาว 3-24 ตัว ใช้ a-z 0-9 และ -' : 'ตั้งชื่อร้านได้ทีหลัง · ใช้บัญชี Discord ของคุณเท่านั้น'}</div>
+        <div className="hb-hint rv" style={{ '--d': 3 }}>ลิงก์ร้านใช้ชื่อ Discord ของคุณอัตโนมัติ · ตั้งชื่อร้านได้ทีหลัง · ใช้บัญชี Discord ของคุณเท่านั้น</div>
         <div className="hb-cap rv" style={{ '--d': 4 }}><Captcha onToken={setToken} /></div>
       </main>
 
@@ -91,7 +80,7 @@ export default function Landing() {
 
       <section className="hb-api">
         <h2>เช็คสต็อกผ่านลิงก์เดียว</h2>
-        <pre><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>{shown}</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128, "emoji": "<:vip:1234…>" }] } }`}</code></pre>
+        <pre><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>ชื่อ-discord</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128, "emoji": "<:vip:1234…>" }] } }`}</code></pre>
       </section>
 
       <footer className="hb-foot">© Flexozy · ระบบเติมเงินกระเป๋าเดียวกับ flexozy.site</footer>

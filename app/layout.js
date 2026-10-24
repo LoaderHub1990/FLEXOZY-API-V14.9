@@ -32,7 +32,7 @@ export async function generateMetadata() {
 const earlyScript = `document.documentElement.classList.add('js');setTimeout(function(){if(document.documentElement.dataset.ready!=='1')document.documentElement.classList.add('rv-fb')},6000);`;
 
 export default async function RootLayout({ children }) {
-  // โดเมน Hub (shop.flexozy.site) ใช้โครงหน้าของตัวเอง ไม่มีเมนู/Shell ของร้านหลัก
+  // หน้า Hub (/shop/* และ /<ชื่อร้าน>) ใช้โครงหน้าของตัวเอง ไม่มีเมนู/Shell ของร้านหลัก
   if ((await headers()).get('x-hub') === '1') {
     return (
       <html lang="th" suppressHydrationWarning>

@@ -21,7 +21,7 @@ async function uniqueUsername(base) {
   return `user${crypto.randomBytes(6).toString('hex')}`;
 }
 
-async function handle(req) {
+async function handle(req, ctx) {
   if (!discordConfigured()) throw new HttpError(500, 'ร้านยังไม่ได้ตั้งค่าล็อกอินด้วย Discord');
   const url = new URL(req.url);
   if (url.searchParams.get('error')) throw new HttpError(400, 'คุณยกเลิกการเข้าสู่ระบบด้วย Discord');
@@ -32,6 +32,7 @@ async function handle(req) {
   let saved = null;
   try { saved = JSON.parse(jar.get('dh_oauth')?.value || 'null'); } catch {}
   jar.set('dh_oauth', '', { path: '/', maxAge: 0 });
+  ctx.from = saved?.from === 'shop' ? 'shop' : ''; // ล็อกอินมาจาก flexozy.site/shop/login
   if (!saved || !code || !state || state.length !== saved.state.length ||
       !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(saved.state))) {
     throw new HttpError(400, 'เซสชันล็อกอินหมดอายุ กรุณาลองใหม่อีกครั้ง');
@@ -104,17 +105,18 @@ async function handle(req) {
     }
   }
   await createSession(uid);
-  return '/';
+  return ctx.from === 'shop' ? '/shop/dashboard' : '/';
 }
 
 export async function GET(req) {
   const origin = await siteOrigin();
+  const ctx = { from: '' };
   try {
-    const to = await handle(req);
+    const to = await handle(req, ctx);
     return NextResponse.redirect(`${origin}${to}`);
   } catch (e) {
     const msg = e instanceof HttpError ? e.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่';
     if (!(e instanceof HttpError)) console.error(e);
-    return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent(msg)}`);
+    return NextResponse.redirect(`${origin}${ctx.from === 'shop' ? '/shop/login' : '/'}?auth_error=${encodeURIComponent(msg)}`);
   }
 }

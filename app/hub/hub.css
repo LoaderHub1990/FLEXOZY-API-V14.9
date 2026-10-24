@@ -1,4 +1,4 @@
-/* ===== Flexozy Shop Hub (shop.flexozy.site) ===== */
+/* ===== Flexozy Shop Hub (flexozy.site/shop) ===== */
 body.hub{display:block;background:#000;overflow-x:hidden}
 .hb{--hb-acc:#a855f7;--hb-acc2:#7c3aed;--hb-line:rgba(255,255,255,.09);position:relative;min-height:100vh;color:#fafafa;font-family:var(--font);overflow-x:hidden;isolation:isolate}
 .hb *{box-sizing:border-box}

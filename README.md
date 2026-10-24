@@ -106,18 +106,22 @@ node scripts/e2e.mjs http://localhost:3000
 
 ---
 
-## Hub — ร้านค้าบอท Discord สำหรับบุคคลทั่วไป (shop.flexozy.site)
+## Hub — ร้านค้าบอท Discord สำหรับบุคคลทั่วไป (flexozy.site/shop/login)
 
 คนทั่วไปล็อกอินด้วย Discord (+ แคปช่า) → สร้างร้าน → เพิ่มสินค้า/สต็อก → ใส่ไอดีเซิร์ฟเวอร์ → บอทสร้างแผงร้านให้เอง
 
 | ส่วน | ที่อยู่ |
 |---|---|
-| หน้าสมัคร (อนิเมชันแสงสาด → วาดโลโก้) | `shop.flexozy.site` |
-| แดชบอร์ดเจ้าของร้าน (เข้าได้เฉพาะบัญชี Discord ที่ล็อกอิน) | `shop.flexozy.site/dashboard` |
-| หน้าร้านสาธารณะ (สต็อกสด) | `shop.flexozy.site/<ชื่อร้าน>` |
+| หน้าล็อกอิน/สมัคร (อนิเมชันแสงสาด → วาดโลโก้) | `flexozy.site/shop/login` |
+| แดชบอร์ดเจ้าของร้าน (เข้าได้เฉพาะบัญชี Discord ที่ล็อกอิน) | `flexozy.site/shop/dashboard` |
+| หน้าร้านสาธารณะ (สต็อกสด) | `flexozy.site/<ชื่อ Discord ของเจ้าของร้าน>` |
 | API เช็คสต็อก | `flexozy.site/api/v1/shop/<ชื่อร้าน>` · รายชื่อร้าน `flexozy.site/api/v1/shop` |
 
-**ตั้งค่า:** (1) เพิ่มโดเมน `shop.flexozy.site` ในโปรเจกต์ Vercel เดิม (2) เพิ่ม Redirect `https://shop.flexozy.site/api/auth/discord/callback` ใน Discord Developer Portal (3) ตั้ง `HUB_HOST`, `BOT_CLIENT_ID`, `SHOP_FEE_PERCENT` ตาม `.env.example` — ตารางสร้างอัตโนมัติ
+- ลิงก์ร้านสร้างจาก **username ของ Discord** อัตโนมัติ ตอนกด “สร้างร้าน” (ตัวพิมพ์เล็ก, `_` และ `.` เปลี่ยนเป็น `-`, ยาว 3-24 ตัว เช่น `Nac_Dev.01` → `flexozy.site/nac-dev-01`) ถ้าชนกับคนอื่น/เป็นชื่อสงวน/ไม่มีตัวอักษรอังกฤษ ระบบต่อเลขสุ่มให้ — ชื่อสงวนอยู่ที่ `lib/reserved.js`
+- ใช้โดเมนและ Redirect ของ Discord ตัวเดียวกับเว็บหลัก (`https://flexozy.site/api/auth/discord/callback`) ไม่ต้องเพิ่มโดเมน/Redirect ใหม่ · โดเมนเก่า `shop.flexozy.site` (ถ้ายังชี้มา) จะถูกเด้งมาโดเมนหลักอัตโนมัติ
+- ล็อกอินผ่าน `/shop/login` ใช้บัญชี/กระเป๋าเงินเดียวกับร้านหลัก (เซสชันเดียวกัน)
+
+**ตั้งค่า:** ตั้ง `BOT_CLIENT_ID`, `SHOP_FEE_PERCENT` ตาม `.env.example` — ตารางสร้างอัตโนมัติ
 
 **API เช็คสต็อก** `GET /api/v1/shop/<slug>` → ชื่อ รูป สีธีม ชื่อปุ่ม สินค้า (`price_baht`, `stock`, `emoji`, `in_stock`) และ `version` · ต่อท้าย `?since=<version>` ถ้าไม่มีอะไรเปลี่ยนจะได้ `{"unchanged":true}` · เปิด CORS
 

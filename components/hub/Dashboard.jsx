@@ -12,7 +12,7 @@ function Copy({ text }) {
   return <button className="hb-btn ghost sm" onClick={() => { navigator.clipboard?.writeText(text); setOk(true); setTimeout(() => setOk(false), 1200); }}>{ok ? 'คัดลอกแล้ว' : 'คัดลอก'}</button>;
 }
 
-export default function Dashboard({ base }) {
+export default function Dashboard({ base = '/shop' }) {
   const [d, setD] = useState(null);
   const [tab, setTab] = useState('shop');
   const [toast, setToast] = useState(null);
@@ -26,7 +26,7 @@ export default function Dashboard({ base }) {
       ver.current = r.shop?.version || 0;
       setD(r);
     } catch (e) {
-      if (e.status === 401 || e.status === 403) location.href = base || '/';
+      if (e.status === 401 || e.status === 403) location.href = `${base}/login`;
       else if (force) say(e.message, true);
     }
   }, [base]);
@@ -41,7 +41,7 @@ export default function Dashboard({ base }) {
     try { await fn(); await load(true); if (okMsg) say(okMsg); return true; }
     catch (e) { say(e.message, true); return false; }
   };
-  const logout = async () => { await api('/api/auth/logout', 'POST', {}); location.href = base || '/'; };
+  const logout = async () => { await api('/api/auth/logout', 'POST', {}); location.href = `${base}/login`; };
 
   if (!d) return <div className="hb" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: '#71717a' }}>กำลังโหลด…</div>;
   const { shop, products, user } = d;
@@ -50,7 +50,7 @@ export default function Dashboard({ base }) {
     <div className="hb">
       <div className="hb-dash">
         <div className="hb-top">
-          <a className="hb-brand" href={base || '/'}><Mark size={22} /><b>flexozy</b><span>.shop</span></a>
+          <a className="hb-brand" href={`${base}/login`}><Mark size={22} /><b>flexozy</b><span>.shop</span></a>
           <div className="hb-me">
             {user.discord?.avatar && <img src={user.discord.avatar} alt="" />}
             <span>{user.name}</span>
@@ -58,7 +58,7 @@ export default function Dashboard({ base }) {
           </div>
         </div>
 
-        {!shop ? <CreateShop run={run} /> : (
+        {!shop ? <CreateShop run={run} d={d} /> : (
           <div className="hb-grid">
             <div className="hb-panel">
               <div className="hb-tabs">{TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
@@ -85,19 +85,17 @@ export default function Dashboard({ base }) {
   );
 }
 
-function CreateShop({ run }) {
-  const [slug, setSlug] = useState('');
-  const [name, setName] = useState('');
-  useEffect(() => { try { const s = localStorage.getItem('hb-slug'); if (s) { setSlug(s); setName(s); } } catch {} }, []);
+function CreateShop({ run, d }) {
+  const [name, setName] = useState(d?.user?.discord?.name || '');
+  const slug = d?.suggestedSlug || 'ชื่อ-discord';
   return (
     <div className="hb-panel" style={{ maxWidth: 520, margin: '40px auto' }}>
       <h2 className="hb-h">สร้างร้านของคุณ</h2>
-      <p className="hb-sub">ตั้งชื่อร้านและลิงก์ ทั้งสองอย่างแก้ชื่อได้ภายหลัง (ลิงก์แก้ไม่ได้)</p>
+      <p className="hb-sub">ลิงก์ร้านสร้างจากชื่อ Discord ของคุณอัตโนมัติ (แก้ไม่ได้) ส่วนชื่อร้านแก้ภายหลังได้</p>
       <div className="hb-f">
-        <label>ลิงก์ร้าน<input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))} placeholder="yourname" /></label>
-        <div className="hb-sub" style={{ margin: '-8px 0 0' }}>shop.flexozy.site/<b>{slug || 'yourname'}</b></div>
+        <div className="hb-sub" style={{ margin: 0 }}>ลิงก์ร้าน: flexozy.site/<b>{slug}</b></div>
         <label>ชื่อร้าน<input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อร้านที่แสดง" maxLength={40} /></label>
-        <button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'POST', { slug, name }), 'สร้างร้านแล้ว')}>สร้างร้าน</button>
+        <button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'POST', { name }), 'สร้างร้านแล้ว')}>สร้างร้าน</button>
       </div>
     </div>
   );

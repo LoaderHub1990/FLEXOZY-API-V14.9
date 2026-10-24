@@ -2,8 +2,8 @@ import { route, json, body } from '@/lib/api';
 import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int, safeImage } from '@/lib/util';
 import { requireUser } from '@/lib/auth';
-import { publicDiscord, HUB_HOST } from '@/lib/discord';
-import { cleanSlug, cleanEmoji, cleanColor, cleanButtons, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
+import { publicDiscord } from '@/lib/discord';
+import { slugFromDiscord, cleanEmoji, cleanColor, cleanButtons, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,9 +61,10 @@ async function handle(req, { params }) {
     return json({
       user: { id: user.id, name: user.display_name || user.discord_name || user.username, discord: publicDiscord(user) },
       shop: ownerShop(shop, user),
+      suggestedSlug: shop ? null : slugFromDiscord(user.discord_username || user.username),
       products: shop ? await shopProducts(shop.id) : [],
       urls: shop && {
-        page: `https://${HUB_HOST()}/${shop.slug}`,
+        page: `${site}/${shop.slug}`,
         api: `${site}/api/v1/shop/${shop.slug}`,
       },
       inviteUrl: botId ? `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot%20applications.commands&permissions=347136` : '',
@@ -75,14 +76,19 @@ async function handle(req, { params }) {
   if (res === 'shop' && m === 'POST') {
     if (shop) throw new HttpError(409, 'คุณมีร้านอยู่แล้ว');
     const b = await body(req);
-    const slug = cleanSlug(b.slug);
-    const name = str(b.name, { min: 2, max: 40, name: 'ชื่อร้าน' });
-    try {
-      await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, slug, name]);
-    } catch (e) {
-      if (e.code === '23505') throw new HttpError(409, 'ชื่อร้านนี้ถูกใช้แล้ว');
-      throw e;
+    // ลิงก์ร้าน = ชื่อ Discord ของเจ้าของ → flexozy.site/<ชื่อ Discord> (ถ้าชนกับคนอื่นจะต่อเลขสุ่มให้)
+    const name = str(b.name || user.discord_name || user.discord_username, { min: 2, max: 40, name: 'ชื่อร้าน' });
+    let done = false;
+    for (let attempt = 0; attempt < 6 && !done; attempt++) {
+      try {
+        await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, slugFromDiscord(user.discord_username || user.username, attempt), name]);
+        done = true;
+      } catch (e) {
+        if (e.code !== '23505') throw e;
+        if (!/slug/i.test(String(e.constraint || ''))) throw new HttpError(409, 'คุณมีร้านอยู่แล้ว'); // ชนที่เจ้าของ ไม่ใช่ที่ชื่อลิงก์
+      }
     }
+    if (!done) throw new HttpError(409, 'สร้างลิงก์ร้านไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     return json({ ok: true });
   }
 
