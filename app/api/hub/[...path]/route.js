@@ -3,7 +3,8 @@ import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int, safeImage } from '@/lib/util';
 import { requireUser } from '@/lib/auth';
 import { publicDiscord } from '@/lib/discord';
-import { slugFromDiscord, cleanEmoji, cleanColor, cleanButtons, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
+import { manageableGuilds, botInGuild, guildDetails } from '@/lib/discordApi';
+import { slugFromDiscord, cleanSlug, cleanEmoji, cleanColor, cleanButtons, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,7 @@ function ownerShop(s, user) {
     logo: mediaUrl(s, 'logo'), banner: mediaUrl(s, 'banner'),
     guild_id: s.guild_id, channel_id: s.channel_id, guild_verified: s.guild_verified, guild_name: s.guild_name,
     bot_in_guild: s.bot_in_guild, bot_note: s.bot_note, bot_seen_at: s.bot_seen_at,
+    topup_phone: s.topup_phone || '', topup_enabled: !!s.topup_enabled,
     buttons: mergeButtons(s.buttons), is_public: s.is_public, active: s.active,
     version: Number(s.version),
   };
@@ -57,7 +59,7 @@ async function handle(req, { params }) {
     const since = Number(new URL(req.url).searchParams.get('since'));
     if (shop && since && since === Number(shop.version)) return json({ unchanged: true, version: since });
     const site = (process.env.SITE_URL || 'https://flexozy.site').replace(/\/+$/, '');
-    const botId = process.env.BOT_CLIENT_ID || process.env.DISCORD_CLIENT_ID || '';
+    const botId = process.env.BOT_CLIENT_ID || '1535495556460318851';
     return json({
       user: { id: user.id, name: user.display_name || user.discord_name || user.username, discord: publicDiscord(user) },
       shop: ownerShop(shop, user),
@@ -72,6 +74,24 @@ async function handle(req, { params }) {
     });
   }
 
+  // ---------- เซิร์ฟเวอร์ของฉัน (ที่เป็นเจ้าของ/มีสิทธิ์ Manage Server) + สถานะบอท ----------
+  const myGuilds = async () => {
+    const t = await one('SELECT access_token FROM discord_oauth WHERE user_id=$1 AND expires_at>now()', [user.id]);
+    if (!t) throw new HttpError(401, 'กรุณาล็อกอินด้วย Discord ใหม่อีกครั้งเพื่อโหลดรายชื่อเซิร์ฟเวอร์');
+    return manageableGuilds(t.access_token);
+  };
+  if (res === 'guilds' && !id && m === 'GET') {
+    const list = (await myGuilds()).slice(0, 100);
+    const withBot = await Promise.all(list.map(async (g) => ({ ...g, bot: await botInGuild(g.id) })));
+    withBot.sort((a, b) => Number(b.bot === true) - Number(a.bot === true) || a.name.localeCompare(b.name));
+    return json({ guilds: withBot, botChecked: !!process.env.DISCORD_BOT_TOKEN });
+  }
+  if (res === 'guilds' && id && m === 'GET') { // อีโมจิ (เคลื่อนไหวได้) + ห้อง ของเซิร์ฟเวอร์นั้น
+    if (!/^\d{15,25}$/.test(id)) throw new HttpError(400, 'ไอดีเซิร์ฟเวอร์ไม่ถูกต้อง');
+    if (!(await myGuilds()).some((g) => g.id === id)) throw new HttpError(403, 'คุณไม่มีสิทธิ์จัดการเซิร์ฟเวอร์นี้');
+    return json(await guildDetails(id));
+  }
+
   // ---------- สร้าง/แก้ร้าน ----------
   if (res === 'shop' && m === 'POST') {
     if (shop) throw new HttpError(409, 'คุณมีร้านอยู่แล้ว');
@@ -79,6 +99,11 @@ async function handle(req, { params }) {
     // ลิงก์ร้าน = ชื่อ Discord ของเจ้าของ → flexozy.site/<ชื่อ Discord> (ถ้าชนกับคนอื่นจะต่อเลขสุ่มให้)
     const name = str(b.name || user.discord_name || user.discord_username, { min: 2, max: 40, name: 'ชื่อร้าน' });
     let done = false;
+    if (b.slug) { // ลูกค้าเลือกชื่อลิงก์เองจากหน้าแรก (flexozy.site/ชื่อ)
+      const want = cleanSlug(b.slug);
+      try { await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, want, name]); return json({ ok: true }); }
+      catch (e) { if (e.code === '23505' && /slug/i.test(String(e.constraint || ''))) throw new HttpError(409, `ชื่อ "${want}" ถูกใช้แล้ว ลองชื่ออื่น`); throw e; }
+    }
     for (let attempt = 0; attempt < 6 && !done; attempt++) {
       try {
         await q('INSERT INTO shops(owner_id,slug,name) VALUES($1,$2,$3)', [user.id, slugFromDiscord(user.discord_username || user.username, attempt), name]);
@@ -104,6 +129,17 @@ async function handle(req, { params }) {
     if ('buttons' in b) set('buttons', JSON.stringify(cleanButtons(b.buttons)));
     if ('logo_url' in b) { set('logo_url', safeImage(b.logo_url)); await q("DELETE FROM shop_media WHERE shop_id=$1 AND kind='logo'", [shop.id]); }
     if ('banner_url' in b) { set('banner_url', safeImage(b.banner_url)); await q("DELETE FROM shop_media WHERE shop_id=$1 AND kind='banner'", [shop.id]); }
+    if ('topup_phone' in b) {
+      const ph = String(b.topup_phone || '').replace(/[\s-]/g, '');
+      if (ph && !/^0\d{9}$/.test(ph)) throw new HttpError(400, 'เบอร์รับเงินต้องเป็นเบอร์ TrueMoney 10 หลัก ขึ้นต้นด้วย 0');
+      set('topup_phone', ph);
+      if (!ph) b.topup_enabled = false; // ลบเบอร์ = ปิดระบบเติมเงิน
+    }
+    if ('topup_enabled' in b) {
+      const on = !!b.topup_enabled;
+      if (on && !/^0\d{9}$/.test('topup_phone' in b ? String(b.topup_phone || '').replace(/[\s-]/g, '') : shop.topup_phone || '')) throw new HttpError(400, 'ใส่เบอร์รับเงินก่อนเปิดระบบเติมเงิน');
+      set('topup_enabled', on);
+    }
     if ('channel_id' in b) set('channel_id', snowflake(b.channel_id, 'ไอดีห้อง'));
     const newGuild = 'guild_id' in b ? snowflake(b.guild_id, 'ไอดีเซิร์ฟเวอร์') : undefined;
     if (!sets.length && newGuild === undefined) return json({ ok: true });

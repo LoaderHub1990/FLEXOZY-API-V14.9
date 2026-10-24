@@ -38,7 +38,7 @@ export async function GET(req) {
   u.searchParams.set('client_id', process.env.DISCORD_CLIENT_ID);
   u.searchParams.set('redirect_uri', await redirectUri());
   u.searchParams.set('response_type', 'code');
-  u.searchParams.set('scope', 'identify');
+  u.searchParams.set('scope', fromShop ? 'identify guilds' : 'identify');
   u.searchParams.set('state', state);
   u.searchParams.set('prompt', 'none');
   return NextResponse.redirect(u.toString());

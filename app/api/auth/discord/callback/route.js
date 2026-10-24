@@ -105,6 +105,11 @@ async function handle(req, ctx) {
     }
   }
   await createSession(uid);
+  if (ctx.from === 'shop' && tok.access_token) { // เก็บโทเคนไว้ดึงรายชื่อเซิร์ฟเวอร์ (scope guilds) — หมดอายุตาม Discord
+    await q(`INSERT INTO discord_oauth(user_id,access_token,expires_at) VALUES($1,$2,now() + ($3 || ' seconds')::interval)
+             ON CONFLICT (user_id) DO UPDATE SET access_token=EXCLUDED.access_token,expires_at=EXCLUDED.expires_at`,
+      [uid, tok.access_token, String(Math.min(Number(tok.expires_in) || 3600, 604800))]);
+  }
   return ctx.from === 'shop' ? '/shop/dashboard' : '/';
 }
 

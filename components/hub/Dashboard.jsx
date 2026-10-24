@@ -1,9 +1,10 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api } from '@/components/api';
 import { Mark, Emo } from './Logo';
 import DiscordPreview from './DiscordPreview';
 
+const GuildCtx = createContext('');
 const baht = (s) => (Number(s) / 100).toLocaleString('th-TH', { maximumFractionDigits: 2 });
 const PATHS = {
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
@@ -30,7 +31,8 @@ const TABS = [
   ['products', 'สินค้า & สต็อก', 'box', 'เพิ่มสินค้า เติมสต็อก ตั้งราคา'],
   ['shop', 'ตั้งค่าร้าน', 'store', 'ชื่อ สีธีม โลโก้ แบนเนอร์'],
   ['buttons', 'ปุ่มบนบอท', 'cursor', 'ชื่อและอีโมจิของปุ่มในแผง Discord'],
-  ['discord', 'เชื่อม Discord', 'chat', 'เชิญบอท ใส่ไอดีเซิร์ฟเวอร์และห้อง'],
+  ['discord', 'เซิร์ฟเวอร์ & บอท', 'chat', 'เลือกเซิร์ฟเวอร์ที่มีบอท แล้วตั้งค่าห้อง'],
+  ['topup', 'เติมเงิน', 'coin', 'ตั้งเบอร์ TrueMoney รับเงิน'],
   ['api', 'API', 'code', 'ลิงก์เช็คสต็อกร้านของคุณ'],
 ];
 
@@ -91,6 +93,7 @@ export default function Dashboard({ base = '/shop' }) {
   const cur = TABS.find((t) => t[0] === tab) || TABS[0];
 
   return (
+    <GuildCtx.Provider value={shop?.guild_id || ''}>
     <div className="hb ready">
       <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
       <div className="hb-app">
@@ -138,6 +141,7 @@ export default function Dashboard({ base = '/shop' }) {
                 </div>
               )}
               {tab === 'discord' && <section className="hb-pn"><DiscordTab shop={shop} d={d} run={run} /></section>}
+              {tab === 'topup' && <section className="hb-pn"><TopupTab shop={shop} run={run} /></section>}
               {tab === 'api' && <section className="hb-pn"><ApiTab d={d} shop={shop} /></section>}
             </>
           )}
@@ -145,21 +149,23 @@ export default function Dashboard({ base = '/shop' }) {
       </div>
       {toast && <div className={'hb-toast' + (toast.bad ? ' bad' : '')} role="status">{toast.msg}</div>}
     </div>
+    </GuildCtx.Provider>
   );
 }
 
 function CreateShop({ run, d }) {
   const [name, setName] = useState(d?.user?.discord?.name || '');
-  const slug = d?.suggestedSlug || 'ชื่อ-discord';
+  const [want] = useState(() => { try { return localStorage.getItem('hb-claim') || ''; } catch { return ''; } });
+  const slug = want || d?.suggestedSlug || 'ชื่อ-discord';
   return (
     <div className="hb-create">
       <div className="hb-create-card">
         <div className="hb-create-av">{d.user.discord?.avatar ? <img src={d.user.discord.avatar} alt="" /> : <Mark size={40} />}</div>
         <h2>สร้างร้านของคุณ</h2>
         <p>ยินดีต้อนรับ <b>{d.user.name}</b> — ตั้งชื่อร้านแล้วเริ่มขายผ่านบอท Discord ได้เลย</p>
-        <div className="hb-slugbox"><span>ลิงก์ร้านของคุณ</span><code>flexozy.site/<b>{slug}</b></code><em>สร้างจากชื่อ Discord อัตโนมัติ (แก้ไม่ได้)</em></div>
+        <div className="hb-slugbox"><span>ลิงก์ร้านของคุณ</span><code>flexozy.site/<b>{slug}</b></code><em>{want ? 'ชื่อที่คุณเลือกจากหน้าแรก (ถ้าถูกใช้แล้วจะแจ้งให้เปลี่ยน)' : 'สร้างจากชื่อ Discord อัตโนมัติ'}</em></div>
         <label className="hb-fl">ชื่อร้าน<input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อร้านที่แสดง" maxLength={40} /></label>
-        <button className="hb-go wide" onClick={() => run(() => api('/api/hub/shop', 'POST', { name }), 'สร้างร้านแล้ว')}>สร้างร้าน <span aria-hidden="true">→</span></button>
+        <button className="hb-go wide" onClick={() => run(() => api('/api/hub/shop', 'POST', { name, slug: want || undefined }).then((r) => { try { localStorage.removeItem('hb-claim'); } catch {} return r; }), 'สร้างร้านแล้ว')}>สร้างร้าน <span aria-hidden="true">→</span></button>
       </div>
     </div>
   );
@@ -281,7 +287,7 @@ function ProductModal({ p, onClose, run }) {
         <label>ชื่อสินค้า<input value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={80} placeholder="เช่น คีย์ VIP 30 วัน" autoFocus /></label>
         <div className="hb-two">
           <label>ราคา (บาท)<input type="number" min="0.01" step="0.01" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="59" /></label>
-          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={f.emoji} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥 หรือ <:vip:123…>" /><Emo v={f.emoji} size={24} /></div></label>
+          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={f.emoji} onChange={(e) => set('emoji', e.target.value)} placeholder="🔥 หรือ <:vip:123…>" /><Emo v={f.emoji} size={24} /></div><EmojiPicker onPick={(v) => set('emoji', v)} /></label>
         </div>
         <label>รายละเอียด<input value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} placeholder="รายละเอียดสั้นๆ (ไม่บังคับ)" /></label>
         <label className="hb-check"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /><span>แสดงสินค้านี้ในร้าน</span></label>
@@ -400,11 +406,11 @@ function ButtonsTab({ shop, run }) {
   const set = (k, f, v) => setB((o) => ({ ...o, [k]: { ...o[k], [f]: v } }));
   return (
     <div className="hb-f">
-      <p className="hb-sub" style={{ margin: 0 }}>ตั้งชื่อและอีโมจิของปุ่มในแผง Discord (ใช้อีโมจิเซิร์ฟเวอร์ได้ ถ้าบอทอยู่ในเซิร์ฟเวอร์นั้น — คัดลอกรูปแบบ <code>&lt;:ชื่อ:id&gt;</code> จาก Discord)</p>
+      <p className="hb-sub" style={{ margin: 0 }}>ตั้งชื่อและอีโมจิของปุ่มในแผง Discord (กด “เลือกอีโมจิจากเซิร์ฟเวอร์” เพื่อใช้อีโมจิเคลื่อนไหวของเซิร์ฟเวอร์คุณได้เลย — ต้องเชื่อมเซิร์ฟเวอร์ที่แท็บ “เซิร์ฟเวอร์ & บอท” ก่อน)</p>
       {Object.keys(BTN_NAMES).map((k) => (
         <div className="hb-two" key={k}>
           <label>{BTN_NAMES[k]}<input value={b[k].label} onChange={(e) => set(k, 'label', e.target.value)} maxLength={40} /></label>
-          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={b[k].emoji} onChange={(e) => set(k, 'emoji', e.target.value)} /><Emo v={b[k].emoji} size={22} /></div></label>
+          <label>อีโมจิ<div className="hb-row"><input style={{ flex: 1, minWidth: 0 }} value={b[k].emoji} onChange={(e) => set(k, 'emoji', e.target.value)} /><Emo v={b[k].emoji} size={22} /></div><EmojiPicker onPick={(v) => set(k, 'emoji', v)} /></label>
         </div>
       ))}
       <div><button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'PUT', { buttons: b }), 'บันทึกปุ่มแล้ว — บอทจะอัปเดตแผงในไม่กี่วินาที')}>บันทึกปุ่ม</button></div>
@@ -412,26 +418,109 @@ function ButtonsTab({ shop, run }) {
   );
 }
 
+/* เลือกอีโมจิจากเซิร์ฟเวอร์ที่เชื่อมไว้ (รวมอีโมจิเคลื่อนไหว) — ดึงผ่านบอท */
+const emojiCache = {};
+function EmojiPicker({ onPick }) {
+  const gid = useContext(GuildCtx);
+  const [open, setOpen] = useState(false);
+  const [list, setList] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    if (!open || !gid || emojiCache[gid]) { if (emojiCache[gid]) setList(emojiCache[gid]); return; }
+    api(`/api/hub/guilds/${gid}`).then((r) => { emojiCache[gid] = r.emojis; setList(r.emojis); }).catch((e) => setErr(e.message));
+  }, [open, gid]);
+  if (!gid) return <small className="hb-sub" style={{ margin: '6px 0 0' }}>เชื่อมเซิร์ฟเวอร์ก่อนเพื่อใช้อีโมจิของเซิร์ฟเวอร์</small>;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button type="button" className="hb-btn ghost sm" onClick={() => setOpen(!open)}>{open ? 'ปิด' : '😀 เลือกอีโมจิจากเซิร์ฟเวอร์'}</button>
+      {open && (err ? <div className="hb-alert bad">{err}</div> : !list ? <p className="hb-sub">กำลังโหลดอีโมจิ…</p> : !list.length ? <p className="hb-sub">เซิร์ฟเวอร์นี้ยังไม่มีอีโมจิกำหนดเอง</p> : (
+        <div className="hb-eg" style={{ marginTop: 8 }}>
+          {list.map((e) => (
+            <button type="button" key={e.id} title={`:${e.name}:${e.animated ? ' (เคลื่อนไหว)' : ''}`} onClick={() => { onPick(e.value); setOpen(false); }}>
+              <img src={e.url} alt={e.name} loading="lazy" />{e.animated && <em>GIF</em>}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DiscordTab({ shop, d, run }) {
-  const [g, setG] = useState(shop.guild_id || '');
+  const [gl, setGl] = useState(null);
+  const [err, setErr] = useState('');
+  const [sel, setSel] = useState(shop.guild_id || '');
+  const [chs, setChs] = useState(null);
   const [c, setC] = useState(shop.channel_id || '');
-  const st = !shop.guild_id ? ['warn', 'ยังไม่ได้ใส่ไอดีเซิร์ฟเวอร์']
-    : !shop.bot_in_guild ? ['warn', 'บอทยังไม่ได้อยู่ในเซิร์ฟเวอร์นี้']
+  useEffect(() => {
+    api('/api/hub/guilds').then(setGl).catch((e) => setErr(e.message));
+  }, []);
+  useEffect(() => {
+    setChs(null);
+    if (!sel) return;
+    api(`/api/hub/guilds/${sel}`).then((r) => setChs(r.channels)).catch(() => setChs([]));
+  }, [sel]);
+  const st = !shop.guild_id ? ['warn', 'ยังไม่ได้เลือกเซิร์ฟเวอร์']
+    : !shop.bot_in_guild ? ['warn', 'รอบอทตรวจสอบเซิร์ฟเวอร์']
     : !shop.guild_verified ? ['bad', shop.bot_note || 'ยังไม่ผ่านการตรวจสิทธิ์']
     : ['ok', `เชื่อมแล้ว${shop.guild_name ? ` · ${shop.guild_name}` : ''}`];
+  const invite = (id) => d.inviteUrl ? `${d.inviteUrl}${id ? `&guild_id=${id}&disable_guild_select=true` : ''}` : '';
   return (
     <div className="hb-f">
-      <ol className="hb-ol">
-        <li>เชิญบอทเข้าเซิร์ฟเวอร์ของคุณ {d.inviteUrl ? <a className="hb-btn sm" href={d.inviteUrl} target="_blank" rel="noreferrer">เชิญบอท ↗</a> : <span className="hb-badge warn">ผู้ดูแลยังไม่ได้ตั้งค่า BOT_CLIENT_ID</span>}</li>
-        <li>เปิดโหมดนักพัฒนาใน Discord (ตั้งค่า → ขั้นสูง) แล้วคลิกขวาที่ชื่อเซิร์ฟเวอร์ → <b>คัดลอกไอดี</b> นำมาวางด้านล่าง</li>
-        <li>คลิกขวาที่ห้องที่จะให้บอทโพสต์แผงร้าน → คัดลอกไอดีห้อง</li>
-      </ol>
-      <div className="hb-two">
-        <label>ไอดีเซิร์ฟเวอร์<input value={g} onChange={(e) => setG(e.target.value.trim())} placeholder="123456789012345678" inputMode="numeric" /></label>
-        <label>ไอดีห้องแผงร้าน<input value={c} onChange={(e) => setC(e.target.value.trim())} placeholder="123456789012345678" inputMode="numeric" /></label>
+      <div className="hb-row" style={{ justifyContent: 'space-between' }}>
+        <p className="hb-sub" style={{ margin: 0 }}>เซิร์ฟเวอร์ที่คุณเป็นเจ้าของ หรือมีสิทธิ์ Manage Server — เรียงเซิร์ฟเวอร์ที่มีบอทอยู่ไว้ก่อน</p>
+        <span className={'hb-badge ' + st[0]}>{st[1]}</span>
       </div>
-      <div className="hb-row"><button className="hb-btn" onClick={() => run(() => api('/api/hub/shop', 'PUT', { guild_id: g, channel_id: c }), 'บันทึกแล้ว — รอบอทตรวจสอบ')}>บันทึกและเชื่อมบอท</button><span className={'hb-badge ' + st[0]}>{st[1]}</span></div>
-      <p className="hb-sub" style={{ margin: 0 }}>บอทจะตรวจว่าบัญชี Discord ของคุณเป็นเจ้าของหรือมีสิทธิ์ <b>Manage Server</b> ในเซิร์ฟเวอร์นั้น แล้วสร้างไฟล์ข้อมูลของเซิร์ฟเวอร์ + โพสต์แผงร้านให้อัตโนมัติ{shop.bot_seen_at ? ` · บอทเช็กล่าสุด ${new Date(shop.bot_seen_at).toLocaleTimeString('th-TH')}` : ''}</p>
+      {err && <div className="hb-alert bad">{err} {err.includes('ล็อกอิน') && <a className="hb-btn sm" href="/api/auth/logout" onClick={(e) => { e.preventDefault(); api('/api/auth/logout', 'POST', {}).then(() => { location.href = '/shop/login'; }); }}>ล็อกอินใหม่</a>}</div>}
+      {!gl && !err && <p className="hb-sub">กำลังโหลดเซิร์ฟเวอร์ของคุณ…</p>}
+      {gl && !gl.guilds.length && <p className="hb-sub">ไม่พบเซิร์ฟเวอร์ที่คุณจัดการได้</p>}
+      {gl && (
+        <div className="hb-gl">
+          {gl.guilds.map((g) => (
+            <button key={g.id} type="button" className={'hb-g' + (sel === g.id ? ' on' : '')} onClick={() => { setSel(g.id); setC(g.id === shop.guild_id ? shop.channel_id || '' : ''); }}>
+              {g.icon ? <img src={g.icon} alt="" /> : <i>{g.name.slice(0, 1)}</i>}
+              <div><b>{g.name}</b><small className={g.bot ? 'ok' : ''}>{g.bot === true ? '● บอทอยู่ในเซิร์ฟเวอร์แล้ว' : g.bot === false ? 'ยังไม่มีบอท' : 'ไม่ทราบสถานะบอท'}</small></div>
+            </button>
+          ))}
+        </div>
+      )}
+      {sel && gl && (() => {
+        const g = gl.guilds.find((x) => x.id === sel);
+        const hasBot = g?.bot !== false;
+        return hasBot ? (
+          <>
+            <label>ห้องที่ให้บอทโพสต์แผงร้าน
+              {chs === null ? <input disabled placeholder="กำลังโหลดห้อง…" /> : chs.length ? (
+                <select value={c} onChange={(e) => setC(e.target.value)}>
+                  <option value="">— เลือกห้อง —</option>
+                  {chs.map((x) => <option key={x.id} value={x.id}>#{x.name}</option>)}
+                </select>
+              ) : <input value={c} onChange={(e) => setC(e.target.value.trim())} placeholder="ไอดีห้อง (โหลดรายชื่อห้องไม่ได้)" inputMode="numeric" />}
+            </label>
+            <div className="hb-row"><button className="hb-btn" disabled={!c} onClick={() => run(() => api('/api/hub/shop', 'PUT', { guild_id: sel, channel_id: c }), 'บันทึกแล้ว — บอทจะสร้างไฟล์และแผงร้านให้อัตโนมัติ')}>บันทึกและเชื่อมบอท</button></div>
+          </>
+        ) : (
+          <div className="hb-alert">บอทยังไม่ได้อยู่ใน <b>{g.name}</b> {invite(sel) ? <a className="hb-btn sm" href={invite(sel)} target="_blank" rel="noreferrer">เชิญบอทเข้าเซิร์ฟเวอร์นี้ ↗</a> : <span className="hb-badge warn">ผู้ดูแลยังไม่ได้ตั้งค่า BOT_CLIENT_ID</span>}</div>
+        );
+      })()}
+      <p className="hb-sub" style={{ margin: 0 }}>เมื่อบันทึก ระบบจะส่งข้อมูลร้านไปที่บอทผ่าน API <code>/api/v1/shop</code> บอทจะสร้างไฟล์ข้อมูลของเซิร์ฟเวอร์และโพสต์แผงร้านเอง{shop.bot_seen_at ? ` · บอทเช็กล่าสุด ${new Date(shop.bot_seen_at).toLocaleTimeString('th-TH')}` : ''}</p>
+    </div>
+  );
+}
+
+function TopupTab({ shop, run }) {
+  const [ph, setPh] = useState(shop.topup_phone || '');
+  const [on, setOn] = useState(shop.topup_enabled);
+  const ok = /^0\d{9}$/.test(ph.replace(/[\s-]/g, ''));
+  return (
+    <div className="hb-f">
+      <p className="hb-sub" style={{ margin: 0 }}>ตั้งเบอร์ TrueMoney Wallet ของร้านคุณ — ปุ่ม “{shop.buttons.topup.label}” บนแผง Discord จะให้ลูกค้าส่งลิงก์ซองของขวัญ แล้วบอทรับซองเข้าเบอร์นี้ให้อัตโนมัติ</p>
+      <label>เบอร์ TrueMoney รับเงิน<input value={ph} onChange={(e) => setPh(e.target.value.replace(/[^\d]/g, '').slice(0, 10))} placeholder="0812345678" inputMode="numeric" /></label>
+      <label className="hb-row" style={{ flexDirection: 'row' }}><input type="checkbox" checked={on} disabled={!ok} onChange={(e) => setOn(e.target.checked)} />เปิดปุ่มเติมเงินในร้านนี้</label>
+      <div className="hb-row">
+        <button className="hb-btn" disabled={ph !== '' && !ok} onClick={() => run(() => api('/api/hub/shop', 'PUT', { topup_phone: ph, topup_enabled: ok && on }), 'บันทึกการตั้งค่าเติมเงินแล้ว')}>บันทึก</button>
+        <span className={'hb-badge ' + (shop.topup_enabled ? 'ok' : 'warn')}>{shop.topup_enabled ? `เปิดอยู่ · ${shop.topup_phone}` : 'ปิดอยู่'}</span>
+      </div>
     </div>
   );
 }

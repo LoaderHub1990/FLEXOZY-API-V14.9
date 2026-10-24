@@ -308,3 +308,36 @@ html:has(.lp){scroll-behavior:smooth;scroll-padding-top:80px}
 .js .lp-rv{opacity:0;filter:blur(8px);transform:translateY(28px);transition:opacity .7s ease var(--d,0s),filter .7s ease var(--d,0s),transform .7s cubic-bezier(.16,1,.3,1) var(--d,0s)}
 .js .lp-rv.in{opacity:1;filter:none;transform:none}
 @media(prefers-reduced-motion:reduce){.js .lp-rv{opacity:1;filter:none;transform:none;transition:none}}
+
+/* ---------- hero แบบ astel.bio: โลโก้ใหญ่ + ช่องจองชื่อลิงก์ ---------- */
+.lp-hero{padding-top:130px}
+.lp-bigmark{display:flex;align-items:center;gap:16px;margin-bottom:54px;color:#fff;filter:drop-shadow(0 0 40px rgba(168,85,247,.55))}
+.lp-bigmark span{font-size:clamp(44px,8vw,72px);font-weight:600;letter-spacing:.02em}
+.lp-hero h1{margin-top:0;font-size:clamp(34px,6.6vw,60px);letter-spacing:-.035em}
+.lp-claim{margin-top:34px;display:flex;align-items:center;width:min(480px,100%);padding:5px;border-radius:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);backdrop-filter:blur(10px);transition:border-color .2s,box-shadow .2s}
+.lp-claim:focus-within{border-color:rgba(168,85,247,.6);box-shadow:0 0 0 4px rgba(168,85,247,.15)}
+.lp-claim-pre{padding:0 4px 0 14px;font-size:14.5px;color:#a1a1aa;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08);height:30px;display:flex;align-items:center;padding-right:12px}
+.lp-claim input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:11px 12px;font-size:15px;color:#fff}
+.lp-claim input::placeholder{color:#52525b}
+.lp-claim button{display:inline-flex;align-items:center;gap:6px;padding:11px 18px;border:0;border-radius:12px;cursor:pointer;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(180deg,#a855f7,#7e22ce);box-shadow:0 2px 0 rgba(255,255,255,.2) inset,0 10px 30px -10px rgba(168,85,247,.8);transition:transform .2s,opacity .2s;white-space:nowrap}
+.lp-claim button:hover{transform:translateY(-1px)}.lp-claim button[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+.lp-hero .lp-cap{margin-top:14px;display:flex;justify-content:center;width:min(480px,100%)}
+.lp-note{margin-top:12px;font-size:12.5px;color:#71717a}
+.lp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(640px,100%);margin-top:56px}
+.lp-stats div{padding:16px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:grid;gap:4px}
+.lp-stats b{font-size:22px;font-weight:700;background:linear-gradient(90deg,#fff,#c084fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp-stats span{font-size:12px;color:#8b8b95;line-height:1.4}
+.lp-preview{max-width:560px;margin:0 auto;padding:18px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);box-shadow:0 40px 100px -50px #7c3aed}
+@media(max-width:520px){.lp-stats{grid-template-columns:1fr}.lp-claim-pre{font-size:13px}}
+
+/* ---------- แดชบอร์ด: เลือกเซิร์ฟเวอร์ / อีโมจิ / เติมเงิน ---------- */
+.hb-gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.hb-g{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:1px solid var(--hb-line);background:rgba(255,255,255,.03);text-align:left;cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.hb-g:hover{background:rgba(255,255,255,.06);transform:translateY(-2px)}.hb-g.on{border-color:rgba(168,85,247,.7);background:rgba(168,85,247,.1)}
+.hb-g img,.hb-g i{width:40px;height:40px;border-radius:12px;object-fit:cover;background:#18181b;display:grid;place-items:center;font-style:normal;font-weight:700;flex:0 0 auto}
+.hb-g div{min-width:0;display:grid;gap:3px}.hb-g b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-g small{font-size:11.5px;color:#a1a1aa}.hb-g small.ok{color:#4ade80}
+.hb-eg{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;max-height:220px;overflow:auto;padding:10px;border-radius:12px;border:1px solid var(--hb-line);background:#07050d}
+.hb-eg button{position:relative;display:grid;place-items:center;aspect-ratio:1;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer;transition:background .15s,transform .15s}
+.hb-eg button:hover{background:rgba(255,255,255,.08);transform:scale(1.08)}.hb-eg button img{width:30px;height:30px}
+.hb-eg button em{position:absolute;right:2px;bottom:1px;font-size:8px;font-style:normal;font-weight:700;color:#c084fc}

@@ -1,4 +1,6 @@
-import { shopBySlug, shopProducts, publicShop, pub } from '@/lib/hub';
+import { shopBySlug, shopProducts, publicShop, pub, botView, NO_STORE } from '@/lib/hub';
+import { botAuthorized } from '@/lib/auth';
+import { one } from '@/lib/db';
 import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +16,12 @@ export async function GET(req, { params }) {
     const h = await headers();
     const host = h.get('x-forwarded-host') || h.get('host');
     const origin = `${h.get('x-forwarded-proto') || 'https'}://${host}`;
-    return pub({ ok: true, shop: publicShop(shop, await shopProducts(shop.id), { origin }) });
+    const data = publicShop(shop, await shopProducts(shop.id), { origin });
+    if (await botAuthorized()) {
+      const o = await one('SELECT discord_id FROM users WHERE id=$1', [shop.owner_id]);
+      return pub({ ok: true, shop: { ...data, bot: botView(shop, o?.discord_id) } }, 200, NO_STORE);
+    }
+    return pub({ ok: true, shop: data });
   } catch (e) {
     console.error(e);
     return pub({ ok: false, error: 'server_error' }, 500, { 'Cache-Control': 'no-store' });

@@ -2,6 +2,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Captcha from '@/components/Captcha';
 import { Mark } from './Logo';
+import DiscordPreview from './DiscordPreview';
+
+const DEMO = {
+  shop: { name: 'Nova Store', tagline: 'ส่งออโต้ 24 ชม. · สต็อกสด', color: '#a855f7', logo: '', banner: '', buttons: { buy: { label: 'ซื้อสินค้า', emoji: '🛒' }, stock: { label: 'เช็คสต็อก', emoji: '📦' }, balance: { label: 'ยอดเงิน', emoji: '💰' }, topup: { label: 'เติมเงิน', emoji: '💳' } } },
+  products: [
+    { id: 1, name: 'Netflix Premium 30 วัน', price: 5900, emoji: '🎬', stock: 128, active: true },
+    { id: 2, name: 'Spotify Family', price: 3500, emoji: '🎧', stock: 54, active: true },
+    { id: 3, name: 'Nitro Boost 1 เดือน', price: 9900, emoji: '🚀', stock: 0, active: true },
+  ],
+};
 
 const P = {
   shield: 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4',
@@ -43,6 +53,7 @@ export default function Landing() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(0);
+  const [slug, setSlug] = useState('');
   const root = useRef(null);
 
   useEffect(() => {
@@ -70,6 +81,7 @@ export default function Landing() {
   const go = () => {
     if (!token || busy) return;
     setBusy(true);
+    try { slug ? localStorage.setItem('hb-claim', slug) : localStorage.removeItem('hb-claim'); } catch {} // ชื่อลิงก์ที่อยากได้ → ใช้ตอนสร้างร้าน
     location.href = `/api/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
   };
 
@@ -95,31 +107,41 @@ export default function Landing() {
         <div className="lp-nav-in">
           <a className="lp-brand" href="/shop/login"><Mark size={26} /><b>flexozy<span>.shop</span></b></a>
           <nav className="lp-links">
-            <a href="#features">ฟีเจอร์</a><a href="#how">วิธีใช้งาน</a><a href="#api">API</a><a href="#faq">คำถามที่พบบ่อย</a>
+            <a href="#features">Feature</a><a href="#preview">Preview</a><a href="#api">API</a><a href="#faq">FAQ</a>
           </nav>
           <div className="lp-nav-cta">
-            <a className="lp-btn ghost" href="#start">เข้าสู่ระบบ</a>
-            <a className="lp-btn solid" href="#start">เริ่มต้นใช้งาน</a>
+            <a className="lp-btn ghost" href="#start">Login</a>
+            <a className="lp-btn solid" href="#start">Get Started</a>
           </div>
         </div>
       </header>
 
       <main>
         <section className="lp-hero" id="start">
-          <span className="lp-pill"><i /> ร้านค้าบอท Discord สำหรับทุกคน</span>
-          <h1>เปิดร้านบน Discord<br /><span>พร้อมขายใน 1 นาที</span></h1>
-          <p>ล็อกอินด้วย Discord เพิ่มสินค้า เติมสต็อก ใส่ไอดีเซิร์ฟเวอร์ แล้วบอทจะสร้างร้านให้ในห้องของคุณ — สต็อกและอีโมจิอัปเดตตามเว็บแบบเรียลไทม์</p>
+          <div className="lp-bigmark" aria-hidden="true"><Mark size={96} /><span>Flexozy</span></div>
+          <h1>Your Discord shop, <span>simplified.</span></h1>
+          <p>เปิดร้านขายของดิจิทัลบน Discord ได้ในไม่กี่นาที — บอทสร้างแผงร้าน ส่งสินค้า และอัปเดตสต็อกให้อัตโนมัติ พร้อมหน้าร้านและ API ในลิงก์เดียว</p>
 
           {err && <div className="hb-err">{err}</div>}
 
-          <form className="lp-login" onSubmit={(e) => { e.preventDefault(); go(); }}>
-            <div className="lp-url"><span>flexozy.site/</span><b>ชื่อ Discord ของคุณ</b></div>
-            <div className="lp-cap"><Captcha onToken={setToken} /></div>
-            <button type="submit" className="lp-btn primary" disabled={!token || busy}>
-              <Ic n="discord" s={18} />{busy ? 'กำลังไปที่ Discord…' : !token ? 'กำลังตรวจสอบความปลอดภัย…' : 'ล็อกอินด้วย Discord'}<Ic n="arrow" s={16} />
-            </button>
-            <small>ลิงก์ร้านใช้ชื่อ Discord ของคุณอัตโนมัติ · ตั้งชื่อร้านได้ทีหลัง</small>
+          <form className="lp-claim" onSubmit={(e) => { e.preventDefault(); go(); }}>
+            <span className="lp-claim-pre">flexozy.site/</span>
+            <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))} placeholder="yourname" maxLength={24} autoComplete="off" spellCheck={false} aria-label="ชื่อลิงก์ร้าน" />
+            <button type="submit" disabled={!token || busy}>{busy ? 'กำลังไป Discord…' : !token ? 'กำลังตรวจสอบ…' : <>Get Started<Ic n="arrow" s={15} /></>}</button>
           </form>
+          <div className="lp-cap"><Captcha onToken={setToken} /></div>
+          <small className="lp-note">ล็อกอินด้วย Discord · เว้นว่างไว้ = ใช้ชื่อ Discord ของคุณเป็นลิงก์ร้าน</small>
+
+          <div className="lp-stats lp-rv">
+            {[['24/7', 'ส่งสินค้าอัตโนมัติ'], ['< 5s', 'สต็อกอัปเดตเรียลไทม์'], ['GIF', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์']].map(([n, t]) => <div key={t}><b>{n}</b><span>{t}</span></div>)}
+          </div>
+        </section>
+
+        <section className="lp-sec" id="preview">
+          <div className="lp-wrap narrow">
+            <div className="lp-head lp-rv"><p>Preview</p><h2>แผงร้านใน Discord ที่ลูกค้าจะเห็น</h2></div>
+            <div className="lp-preview lp-rv"><DiscordPreview shop={DEMO.shop} products={DEMO.products} /></div>
+          </div>
         </section>
 
         <section className="lp-sec" id="features">
@@ -151,7 +173,7 @@ export default function Landing() {
         <section className="lp-sec" id="api">
           <div className="lp-wrap narrow">
             <div className="lp-head lp-rv"><p>API</p><h2>เช็คสต็อกผ่านลิงก์เดียว</h2></div>
-            <pre className="lp-code lp-rv"><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>ชื่อ-discord</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128 }] } }`}</code></pre>
+            <pre className="lp-code lp-rv"><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>ชื่อร้าน</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128 }] } }`}</code></pre>
           </div>
         </section>
 
