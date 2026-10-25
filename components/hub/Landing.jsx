@@ -3,31 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 import Captcha from '@/components/Captcha';
 import { Mark } from './Logo';
 import DiscordPreview from './DiscordPreview';
-import { Aurora, Sparks, useSpotlight } from './Fx';
+import { Backdrop, Cursor, Icon } from './Fx';
 
 const TICKER = ['ส่งสินค้าอัตโนมัติ 24/7', 'สต็อกเรียลไทม์', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์', 'เติมเงิน TrueMoney', 'บอทสร้างแผงร้านเอง', 'API เดียวจบ', 'หน้าร้านส่วนตัว', 'ล็อกอิน Discord ปลอดภัย'];
 
 const DEMO = {
-  shop: { name: 'Nova Store', tagline: 'ส่งออโต้ 24 ชม. · สต็อกสด', color: '#a855f7', logo: '', banner: '', buttons: { buy: { label: 'ซื้อสินค้า', emoji: '🛒' }, stock: { label: 'เช็คสต็อก', emoji: '📦' }, balance: { label: 'ยอดเงิน', emoji: '💰' }, topup: { label: 'เติมเงิน', emoji: '💳' } } },
+  shop: { name: 'Nova Store', tagline: 'ส่งออโต้ 24 ชม. · สต็อกสด', color: '#5865f2', logo: '', banner: '', topup_enabled: true, buttons: { buy: { label: 'ซื้อสินค้า', emoji: '🛒' }, stock: { label: 'เช็คสต็อก', emoji: '📦' }, balance: { label: 'ยอดเงิน', emoji: '💰' }, topup: { label: 'เติมเงิน', emoji: '💳' } } },
   products: [
     { id: 1, name: 'Netflix Premium 30 วัน', price: 5900, emoji: '🎬', stock: 128, active: true },
     { id: 2, name: 'Spotify Family', price: 3500, emoji: '🎧', stock: 54, active: true },
     { id: 3, name: 'Nitro Boost 1 เดือน', price: 9900, emoji: '🚀', stock: 0, active: true },
   ],
 };
-
-const P = {
-  shield: 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4',
-  bot: 'M12 8V4H8M4 8h16v12H4zM2 14h2M20 14h2M9 13v2M15 13v2',
-  palette: 'M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A3.7 3.7 0 0 0 21 10.7C21 6.4 17 3 12 3zM7.5 11h.01M10 7.5h.01M14.5 7.5h.01',
-  zap: 'M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z',
-  code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
-  wallet: 'M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2M3 6v13a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3',
-  plus: 'M12 5v14M5 12h14',
-  arrow: 'M5 12h14M13 6l6 6-6 6',
-  discord: 'M4 5h16v11H9l-5 4z',
-};
-const Ic = ({ n, s = 22 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={P[n]} /></svg>;
 
 const FEATURES = [
   ['shield', 'ล็อกอิน Discord + แคปช่า', 'เข้าร้านได้เฉพาะบัญชี Discord ของเจ้าของ ไม่มีรหัสผ่านให้โดนขโมย'],
@@ -40,7 +27,7 @@ const FEATURES = [
 const STEPS = [
   ['01', 'ล็อกอินด้วย Discord', 'กดปุ่มด้านบน ผ่านแคปช่า แล้วระบบสร้างลิงก์ร้านจากชื่อ Discord ของคุณให้'],
   ['02', 'เพิ่มสินค้า & เติมสต็อก', 'ตั้งชื่อ ราคา อีโมจิ แล้ววางคีย์ทีละบรรทัด 1 บรรทัด = 1 ชิ้น'],
-  ['03', 'เชื่อมเซิร์ฟเวอร์ แล้วขาย', 'ใส่ไอดีเซิร์ฟเวอร์และห้อง บอทสร้างแผงร้านให้ ลูกค้ากดซื้อได้เลย'],
+  ['03', 'เชื่อมเซิร์ฟเวอร์ แล้วขาย', 'เลือกเซิร์ฟเวอร์และห้อง บอทสร้างแผงร้านให้ ลูกค้ากดซื้อได้เลย'],
 ];
 const FAQ = [
   ['Flexozy Shop คืออะไร?', 'แพลตฟอร์มให้ใครก็ได้เปิดร้านขายของดิจิทัลผ่านบอท Discord พร้อมหน้าร้านบนเว็บ ระบบสต็อก และ API เช็คสต็อก'],
@@ -51,113 +38,109 @@ const FAQ = [
 ];
 
 export default function Landing() {
-  const [intro, setIntro] = useState('play'); // play | out | done
+  const [intro, setIntro] = useState('done'); // เริ่มที่ done เพื่อให้ฝั่งเซิร์ฟเวอร์เรนเดอร์หน้าจริงก่อน (ไม่มีจอดำค้างถ้า JS พัง)
   const [token, setToken] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(0);
   const [slug, setSlug] = useState('');
+  const [jsOn, setJsOn] = useState(false);
   const root = useRef(null);
-  useSpotlight(root);
 
   useEffect(() => {
+    setJsOn(true);
     const p = new URLSearchParams(location.search).get('auth_error');
     if (p) { setErr(p); history.replaceState(null, '', location.pathname); }
-    const seen = sessionStorage.getItem('hb-intro');
+    let seen = false;
+    try { seen = !!sessionStorage.getItem('hb-intro'); } catch {}
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (seen || reduce || p) { setIntro('done'); return; }
-    sessionStorage.setItem('hb-intro', '1');
-    const t1 = setTimeout(() => setIntro('out'), 3600);
-    const t2 = setTimeout(() => setIntro('done'), 4500);
+    if (seen || reduce || p) return;
+    try { sessionStorage.setItem('hb-intro', '1'); } catch {}
+    setIntro('play');
+    const t1 = setTimeout(() => setIntro('out'), 2900);
+    const t2 = setTimeout(() => setIntro('done'), 3700);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // เลื่อนลงแล้วค่อยๆ โผล่ (เบลอ → ชัด) เหมือนหน้า astel.bio
+  // เลื่อนลงแล้วค่อยๆ โผล่ — ซ่อนเฉพาะตอน JS ทำงานแล้ว และมีตัวสำรองกันค้าง
   useEffect(() => {
-    const els = root.current?.querySelectorAll('.lp-rv') || [];
-    document.documentElement.classList.add('js'); // ซ่อนก่อนโผล่ — เพิ่มตอน JS ทำงานแล้วเท่านั้น (ถ้า JS พัง เนื้อหายังเห็นปกติ)
+    const els = root.current?.querySelectorAll('.rv') || [];
     if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('in')); return; }
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1, rootMargin: '0px 0px -4% 0px' });
     els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
+    const safety = setTimeout(() => els.forEach((e) => e.classList.add('in')), 6000);
+    return () => { io.disconnect(); clearTimeout(safety); };
   }, []);
 
   const go = () => {
     if (!token || busy) return;
     setBusy(true);
     try { slug ? localStorage.setItem('hb-claim', slug) : localStorage.removeItem('hb-claim'); } catch {} // ชื่อลิงก์ที่อยากได้ → ใช้ตอนสร้างร้าน
-    location.href = `/api/v1/shop/hub/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
+    location.href = `/api/auth/discord?from=shop&cap=${encodeURIComponent(token)}`;
   };
 
   return (
-    <div ref={root} className={'hb hb-land lp' + (intro === 'done' ? ' ready' : '')}>
+    <div ref={root} className={'hb lp' + (jsOn ? ' rv-on' : '')}>
+      <Backdrop /><Cursor />
       {intro !== 'done' && (
-        <div className={'hb-intro' + (intro === 'out' ? ' out' : '')} onClick={() => setIntro('out')} role="presentation">
-          <div className="hb-beams">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
-          <div className="hb-intro-logo">
-            <Mark size={120} draw />
-            <div className="hb-word" aria-label="Flexozy Shop">
-              {'Flexozy'.split('').map((c, i) => <span key={i} style={{ '--i': i }}>{c}</span>)}
-              <em>shop</em>
+        <div className={'intro' + (intro === 'out' ? ' out' : '')} onClick={() => setIntro('out')} role="presentation">
+          <div className="intro-in">
+            <Mark size={110} draw />
+            <div className="intro-word" aria-label="Flexozy Shop">
+              {'Flexozy'.split('').map((c, i) => <span key={i} style={{ '--i': i }}>{c}</span>)}<em>shop</em>
             </div>
           </div>
-          <div className="hb-skip">แตะเพื่อข้าม</div>
+          <div className="intro-skip">แตะเพื่อข้าม</div>
         </div>
       )}
 
-      <Aurora /><Sparks />
-      <div className="hb-spot" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ '--i': i }} />)}</div>
-
       <header className="lp-nav">
-        <div className="lp-nav-in">
-          <a className="lp-brand" href="/shop/login"><Mark size={26} /><b>flexozy<span>.shop</span></b></a>
+        <div className="lp-nav-in rim">
+          <a className="lp-brand" href="/shop/login"><Mark size={24} /><b>flexozy<span>.shop</span></b></a>
           <nav className="lp-links">
             <a href="#features">Feature</a><a href="#preview">Preview</a><a href="#api">API</a><a href="#faq">FAQ</a>
           </nav>
-          <div className="lp-nav-cta">
-            <a className="lp-btn ghost" href="#start">Login</a>
-            <a className="lp-btn solid" href="#start">Get Started</a>
-          </div>
+          <a className="h-btn primary sm rp" href="#start">Get Started</a>
         </div>
       </header>
 
       <main>
         <section className="lp-hero" id="start">
-          <div className="lp-bigmark" aria-hidden="true"><Mark size={96} /><span>Flexozy</span></div>
+          <span className="lp-tag">ร้านค้าบอท Discord สำหรับทุกคน</span>
           <h1>Your Discord shop, <span>simplified.</span></h1>
           <p>เปิดร้านขายของดิจิทัลบน Discord ได้ในไม่กี่นาที — บอทสร้างแผงร้าน ส่งสินค้า และอัปเดตสต็อกให้อัตโนมัติ พร้อมหน้าร้านและ API ในลิงก์เดียว</p>
 
-          {err && <div className="hb-err">{err}</div>}
+          {err && <div className="hb-err" role="alert">{err}</div>}
 
-          <form className="lp-claim" onSubmit={(e) => { e.preventDefault(); go(); }}>
+          <form className="lp-claim rim" onSubmit={(e) => { e.preventDefault(); go(); }}>
             <span className="lp-claim-pre">flexozy.site/</span>
             <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24))} placeholder="yourname" maxLength={24} autoComplete="off" spellCheck={false} aria-label="ชื่อลิงก์ร้าน" />
-            <button type="submit" disabled={!token || busy}>{busy ? 'กำลังไป Discord…' : !token ? 'กำลังตรวจสอบ…' : <>Get Started<Ic n="arrow" s={15} /></>}</button>
+            <button type="submit" className="h-btn primary rp" disabled={!token || busy}>{busy ? 'กำลังไป Discord…' : !token ? 'กำลังตรวจสอบ…' : <>Get Started<Icon n="arrow" s={15} sw={2.2} /></>}</button>
           </form>
           <div className="lp-capbox"><Captcha onToken={setToken} /></div>
           <small className="lp-note">ล็อกอินด้วย Discord · เว้นว่างไว้ = ใช้ชื่อ Discord ของคุณเป็นลิงก์ร้าน</small>
 
-          <div className="lp-stats lp-rv">
-            {[['24/7', 'ส่งสินค้าอัตโนมัติ'], ['< 5s', 'สต็อกอัปเดตเรียลไทม์'], ['GIF', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์']].map(([n, t]) => <div key={t}><b>{n}</b><span>{t}</span></div>)}
+          <div className="lp-stats h-rv">
+            {[['24/7', 'ส่งสินค้าอัตโนมัติ'], ['< 5s', 'สต็อกอัปเดตเรียลไทม์'], ['GIF', 'อีโมจิเคลื่อนไหวจากเซิร์ฟเวอร์']].map(([n, t]) => <div key={t} className="rim glow"><b>{n}</b><span>{t}</span></div>)}
           </div>
         </section>
 
-        <div className="fx-marquee" aria-hidden="true"><div>{[...TICKER, ...TICKER].map((t, i) => <span key={i}>{t}</span>)}</div></div>
+        <div className="lp-marq" aria-hidden="true"><div>{[...TICKER, ...TICKER].map((t, i) => <span key={i}>{t}</span>)}</div></div>
 
         <section className="lp-sec" id="preview">
           <div className="lp-wrap narrow">
-            <div className="lp-head lp-rv"><p>Preview</p><h2>แผงร้านใน Discord ที่ลูกค้าจะเห็น</h2></div>
-            <div className="lp-preview lp-rv"><DiscordPreview shop={DEMO.shop} products={DEMO.products} /></div>
+            <div className="lp-head h-rv"><p>PREVIEW</p><h2>แผงร้านใน Discord ที่ลูกค้าจะเห็น</h2></div>
+            <div className="lp-preview h-rv"><DiscordPreview shop={DEMO.shop} products={DEMO.products} /></div>
           </div>
         </section>
 
         <section className="lp-sec" id="features">
           <div className="lp-wrap">
-            <div className="lp-head lp-rv"><p>ฟีเจอร์</p><h2>ทุกอย่างที่ต้องใช้ ไม่มีส่วนเกิน</h2></div>
+            <div className="lp-head h-rv"><p>FEATURES</p><h2>ทุกอย่างที่ต้องใช้ ไม่มีส่วนเกิน</h2></div>
             <div className="lp-grid">
               {FEATURES.map(([ic, t, d], i) => (
-                <article key={t} className="lp-card lp-rv" style={{ '--d': (i % 3) * 0.08 + 's' }}>
-                  <span className="lp-chip"><Ic n={ic} /></span><h3>{t}</h3><p>{d}</p>
+                <article key={t} className="lp-card rim glow h-rv" style={{ '--d': (i % 3) * 0.08 + 's' }}>
+                  <span className="lp-chip"><Icon n={ic} s={22} /></span><h3>{t}</h3><p>{d}</p>
                 </article>
               ))}
             </div>
@@ -166,10 +149,10 @@ export default function Landing() {
 
         <section className="lp-sec" id="how">
           <div className="lp-wrap">
-            <div className="lp-head lp-rv"><p>วิธีใช้งาน</p><h2>เริ่มขายได้ใน 3 ขั้นตอน</h2></div>
-            <div className="lp-grid three">
+            <div className="lp-head h-rv"><p>HOW IT WORKS</p><h2>เริ่มขายได้ใน 3 ขั้นตอน</h2></div>
+            <div className="lp-grid">
               {STEPS.map(([n, t, d], i) => (
-                <article key={n} className="lp-card step lp-rv" style={{ '--d': i * 0.1 + 's' }}>
+                <article key={n} className="lp-card step rim glow h-rv" style={{ '--d': i * 0.1 + 's' }}>
                   <i>{n}</i><h3>{t}</h3><p>{d}</p>
                 </article>
               ))}
@@ -179,31 +162,31 @@ export default function Landing() {
 
         <section className="lp-sec" id="api">
           <div className="lp-wrap narrow">
-            <div className="lp-head lp-rv"><p>API</p><h2>เช็คสต็อกผ่านลิงก์เดียว</h2></div>
-            <pre className="lp-code lp-rv"><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>ชื่อร้าน</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128 }] } }`}</code></pre>
+            <div className="lp-head h-rv"><p>API</p><h2>เช็คสต็อกผ่านลิงก์เดียว</h2></div>
+            <pre className="lp-code h-rv"><code><b>GET</b> https://flexozy.site/api/v1/shop/<u>ชื่อร้าน</u>{'\n\n'}{`{ "ok": true,\n  "shop": { "name": "…", "version": 42,\n    "products": [{ "name": "…", "price_baht": 59, "stock": 128 }] } }`}</code></pre>
           </div>
         </section>
 
         <section className="lp-sec" id="faq">
-          <div className="lp-wrap faq">
-            <div className="lp-head lp-rv"><p>FAQ</p><h2>มีคำถาม? เรามีคำตอบ</h2></div>
+          <div className="lp-wrap narrow">
+            <div className="lp-head h-rv"><p>FAQ</p><h2>มีคำถาม? เรามีคำตอบ</h2></div>
             <div className="lp-faq">
               {FAQ.map(([q, a], i) => (
-                <div key={q} className={'lp-qa lp-rv' + (open === i ? ' open' : '')}>
-                  <button onClick={() => setOpen(open === i ? -1 : i)} aria-expanded={open === i}><span>{q}</span><Ic n="plus" s={18} /></button>
-                  <div className="lp-ans"><p>{a}</p></div>
+                <div key={q} className={'lp-qa rim h-rv' + (open === i ? ' open' : '')}>
+                  <button type="button" className="rp" onClick={() => setOpen(open === i ? -1 : i)} aria-expanded={open === i}><span>{q}</span><Icon n="plus" s={18} sw={2.2} /></button>
+                  <div className="lp-ans"><div><p>{a}</p></div></div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="lp-sec lp-cta-sec">
+        <section className="lp-sec">
           <div className="lp-wrap narrow">
-            <div className="lp-cta lp-rv">
+            <div className="lp-cta rim h-rv">
               <h2>พร้อมเปิดร้านของคุณหรือยัง?</h2>
               <p>ใช้เวลาไม่ถึงนาที ล็อกอินด้วย Discord แล้วเริ่มได้เลย</p>
-              <a className="lp-btn primary" href="#start">เริ่มต้นใช้งาน<Ic n="arrow" s={16} /></a>
+              <a className="h-btn primary rp" style={{ height: 48, padding: '0 28px' }} href="#start">เริ่มต้นใช้งาน<Icon n="arrow" s={16} sw={2.2} /></a>
             </div>
           </div>
         </section>

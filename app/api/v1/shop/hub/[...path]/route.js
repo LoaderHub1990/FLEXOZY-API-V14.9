@@ -4,7 +4,7 @@ import { str, int, safeImage } from '@/lib/util';
 import { requireUser } from '@/lib/auth';
 import { publicDiscord } from '@/lib/discord';
 import { manageableGuilds, botInGuild, guildDetails } from '@/lib/discordApi';
-import { slugFromDiscord, cleanSlug, cleanEmoji, cleanColor, cleanButtons, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
+import { slugFromDiscord, cleanSlug, cleanEmoji, cleanColor, cleanButtons, cleanPhone, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
 
 export const dynamic = 'force-dynamic';
 
@@ -134,15 +134,16 @@ async function handle(req, { params }) {
     if ('buttons' in b) set('buttons', JSON.stringify(cleanButtons(b.buttons)));
     if ('logo_url' in b) { set('logo_url', safeImage(b.logo_url)); await q("DELETE FROM shop_media WHERE shop_id=$1 AND kind='logo'", [shop.id]); }
     if ('banner_url' in b) { set('banner_url', safeImage(b.banner_url)); await q("DELETE FROM shop_media WHERE shop_id=$1 AND kind='banner'", [shop.id]); }
+    let phoneNow = null;
     if ('topup_phone' in b) {
-      const ph = String(b.topup_phone || '').replace(/[\s-]/g, '');
-      if (ph && !/^0\d{9}$/.test(ph)) throw new HttpError(400, 'เบอร์รับเงินต้องเป็นเบอร์ TrueMoney 10 หลัก ขึ้นต้นด้วย 0');
-      set('topup_phone', ph);
-      if (!ph) b.topup_enabled = false; // ลบเบอร์ = ปิดระบบเติมเงิน
+      phoneNow = cleanPhone(b.topup_phone);
+      set('topup_phone', phoneNow);
+      if (!phoneNow) b.topup_enabled = false; // ลบเบอร์ = ปิดระบบเติมเงิน
     }
     if ('topup_enabled' in b) {
       const on = !!b.topup_enabled;
-      if (on && !/^0\d{9}$/.test('topup_phone' in b ? String(b.topup_phone || '').replace(/[\s-]/g, '') : shop.topup_phone || '')) throw new HttpError(400, 'ใส่เบอร์รับเงินก่อนเปิดระบบเติมเงิน');
+      const effective = phoneNow !== null ? phoneNow : shop.topup_phone || '';
+      if (on && !/^0\d{9}$/.test(effective)) throw new HttpError(400, 'ใส่เบอร์รับเงินก่อนเปิดระบบเติมเงิน');
       set('topup_enabled', on);
     }
     if ('channel_id' in b) set('channel_id', snowflake(b.channel_id, 'ไอดีห้อง'));
