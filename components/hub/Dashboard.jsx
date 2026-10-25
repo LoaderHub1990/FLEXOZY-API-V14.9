@@ -365,7 +365,8 @@ function StockModal({ pid, products, limits, run, onClose }) {
       const r = await api(`/api/v1/shop/hub/products/${pid}/stock`, 'POST', { lines });
       setLines('');
       await run(async () => {});
-      toast.ok('เติมสต็อกแล้ว', `เพิ่ม ${r.added} รายการ`);
+      if (r.added > 0) toast.ok('เติมสต็อกแล้ว', `เพิ่ม ${r.added} รายการ${r.skipped ? ` · ข้าม ${r.skipped} รายการที่ซ้ำกับสต็อกเดิม` : ''}`);
+      else toast.warn('ไม่มีรายการใหม่', 'ทุกบรรทัดซ้ำกับสต็อกที่มีอยู่แล้ว');
     } catch (e) { toast.bad('เติมสต็อกไม่สำเร็จ', e.message); }
     setBusy(false);
   };
@@ -612,19 +613,30 @@ function DiscordTab({ shop, d, run }) {
   const [busy, setBusy] = useState(false);
   const [spin, setSpin] = useState(false);
 
+  const [reload, setReload] = useState(0);
+  const [reposting, setReposting] = useState(false);
   const loadGuilds = useCallback(async () => {
     setErr(''); setSpin(true);
     try { setGl(await api('/api/v1/shop/hub/guilds')); } catch (e) { setErr(e.message); }
     setSpin(false);
   }, []);
   useEffect(() => { loadGuilds(); }, [loadGuilds]);
+  // รีเฟรชแล้วต้องโหลดรายชื่อห้อง/อีโมจิใหม่ด้วย (เดิมใช้แคชเก่า สร้างห้องใหม่แล้วไม่โผล่)
   useEffect(() => {
     setChs(null);
     if (!sel) return;
     let dead = false;
-    guildInfo(sel).then((r) => { if (!dead) setChs(r.channels || []); }).catch(() => { if (!dead) setChs([]); });
+    guildInfo(sel, reload > 0).then((r) => { if (!dead) setChs(r.channels || []); }).catch(() => { if (!dead) setChs([]); });
     return () => { dead = true; };
-  }, [sel]);
+  }, [sel, reload]);
+  const refresh = () => { setReload((n) => n + 1); loadGuilds(); };
+  const canRepost = !!(shop.guild_id && shop.channel_id && shop.guild_verified && shop.bot_in_guild);
+  const repost = async () => {
+    if (reposting || !canRepost) return;
+    setReposting(true);
+    await run(() => api('/api/v1/shop/hub/panel/repost', 'POST', {}), 'สั่งรีเมนูใหม่แล้ว', 'บอทจะลบแผงเดิมแล้วโพสต์แผงใหม่ในห้องที่ตั้งไว้ภายในไม่กี่วินาที');
+    setReposting(false);
+  };
 
   const st = !shop.guild_id ? ['warn', 'ยังไม่ได้เลือกเซิร์ฟเวอร์', 'เลือกเซิร์ฟเวอร์ที่คุณจัดการได้ด้านล่าง', 'server']
     : !shop.bot_in_guild ? ['warn', 'รอบอทตรวจสอบเซิร์ฟเวอร์', 'ถ้าบอทยังไม่อยู่ในเซิร์ฟเวอร์ ให้เชิญบอทก่อน', 'clock']
@@ -657,6 +669,7 @@ function DiscordTab({ shop, d, run }) {
         <div className={'status-card ' + st[0]}>
           <span className="si"><Icon n={st[3]} s={20} /></span>
           <div><b>{st[1]}</b><span>{st[2]}</span></div>
+          {canRepost && <button type="button" className="h-btn sm rp" onClick={repost} disabled={reposting} title="ให้บอทลบแผงเดิมแล้วโพสต์แผงร้านใหม่ในห้องเดิม"><Icon n="refresh" s={14} className={reposting ? 'spinning' : ''} />{reposting ? 'กำลังสั่ง…' : 'รีเมนูใหม่'}</button>}
           {shop.guild_id && <button type="button" className="h-btn danger sm rp" onClick={() => ask({ danger: true, title: 'ยกเลิกการเชื่อมต่อ?', msg: 'บอทจะหยุดอัปเดตแผงร้านในเซิร์ฟเวอร์นี้ (แผงเดิมในห้องยังอยู่ ลบเองได้)', ok: 'ยกเลิกการเชื่อมต่อ', onOk: async () => { const ok = await run(() => api('/api/v1/shop/hub/shop', 'PUT', { guild_id: '', channel_id: '' }), 'ยกเลิกแล้ว'); if (ok) { setSel(''); setC(''); } } })}>ยกเลิก</button>}
         </div>
       </section>
@@ -664,7 +677,7 @@ function DiscordTab({ shop, d, run }) {
       <section className="pn rim">
         <div className="blk">
           <div className="blk-h"><span className="bi"><Icon n="chat" s={18} /></span><div><b>เชื่อมเซิร์ฟเวอร์ Discord</b><span>เซิร์ฟเวอร์ที่คุณเป็นเจ้าของ หรือมีสิทธิ์ Manage Server</span></div>
-            <span style={{ marginLeft: 'auto' }}><button type="button" className="h-btn ghost sm rp" onClick={loadGuilds} disabled={spin}><Icon n="refresh" s={14} className={spin ? 'spinning' : ''} />รีเฟรช</button></span></div>
+            <span style={{ marginLeft: 'auto' }}><button type="button" className="h-btn ghost sm rp" onClick={refresh} disabled={spin}><Icon n="refresh" s={14} className={spin ? 'spinning' : ''} />รีเฟรช</button></span></div>
 
           {err && <div className="alert bad"><Icon n="warn" s={17} />{err}{/ล็อกอิน/.test(err) && <button type="button" className="h-btn sm rp" onClick={() => api('/api/auth/logout', 'POST', {}).then(() => { location.href = '/shop/login'; })}>ล็อกอินใหม่</button>}</div>}
 
@@ -687,7 +700,7 @@ function DiscordTab({ shop, d, run }) {
 
           <div className="h-row">
             <button type="button" className="h-btn primary rp" style={{ height: 46 }} onClick={connect} disabled={!sel || !c || busy || (same && shop.guild_verified)}>{busy ? 'กำลังบันทึก…' : <><Icon n="bot" s={16} />บันทึกและเชื่อมบอท</>}</button>
-            {same && shop.guild_verified && <span className="hint">เชื่อมอยู่แล้ว — เปลี่ยนห้องหรือเซิร์ฟเวอร์เพื่อบันทึกใหม่</span>}
+            {same && shop.guild_verified && <span className="hint">เชื่อมอยู่แล้ว — อยากให้แผงโผล่ใหม่ กดปุ่ม “รีเมนูใหม่” ด้านบนได้เลย ไม่ต้องยกเลิก</span>}
           </div>
         </div>
       </section>

@@ -643,3 +643,8 @@ html.has-cursor .hb input:not([type=checkbox]):not([type=color]):not([type=file]
 
 .pre.good{box-shadow:inset 0 0 0 1.5px rgba(140,225,170,.55)}
 .pre.bad{box-shadow:inset 0 0 0 1.5px rgba(255,125,125,.7)}
+
+/* แผง .pn มี backdrop-filter → เป็น stacking context ของตัวเอง ทำให้เมนู Select ที่ยื่นเลยขอบแผงถูกแผงถัดไปทับ/บัง (หน้าเลือกเซิร์ฟเวอร์) */
+.pn:has(.h-sel.open){z-index:30}
+.status-card .h-btn{flex:none}
+.status-card{flex-wrap:wrap}

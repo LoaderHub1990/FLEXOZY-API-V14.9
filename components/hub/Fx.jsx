@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /* =====================================================================
    ชุดคอมโพเนนต์กลางของ Flexozy Shop (สไตล์เดียวกับ UI สคริปต์ Lua:
@@ -306,8 +307,11 @@ export function Modal({ onClose, icon = 'box', title, sub, wide, children }) {
   const cb = useRef(onClose);
   cb.current = onClose;
   const [leaving, setLeaving] = useState(false);
+  const [host, setHost] = useState(null);
   const closing = useRef(false);
   const me = useRef({});
+  // วาดหน้าต่างไว้ที่ <body> เสมอ — ถ้าวาดอยู่ในแผง (.pn) ที่มี backdrop-filter, position:fixed จะอิงกรอบแผงแทนหน้าจอ ทำให้หน้าต่างสต็อก/สินค้าเพี้ยน
+  useEffect(() => { setHost(document.body); }, []);
   const close = useCallback(() => {
     if (closing.current) return; // กดปิดรัวๆ ก็ปิดครั้งเดียว
     closing.current = true; setLeaving(true);
@@ -326,8 +330,9 @@ export function Modal({ onClose, icon = 'box', title, sub, wide, children }) {
       document.body.style.overflow = modalStack.length ? 'hidden' : prev;
     };
   }, [close]);
-  return (
-    <div className={'mask' + (leaving ? ' out' : '')} onMouseDown={(e) => e.target === e.currentTarget && close()}>
+  if (!host) return null;
+  return createPortal(
+    <div className="hb tl"><div className={'mask' + (leaving ? ' out' : '')} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className={'h-modal rim' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" aria-label={title}>
         <header className="modal-h">
           <span className="modal-ic"><Icon n={icon} s={20} /></span>
@@ -336,7 +341,8 @@ export function Modal({ onClose, icon = 'box', title, sub, wide, children }) {
         </header>
         <div className="modal-b">{typeof children === 'function' ? children(close) : children}</div>
       </div>
-    </div>
+    </div></div>,
+    host
   );
 }
 

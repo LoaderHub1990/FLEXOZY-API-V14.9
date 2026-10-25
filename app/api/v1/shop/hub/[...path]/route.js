@@ -1,9 +1,9 @@
 import { route, json, body } from '@/lib/api';
 import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int, safeImage } from '@/lib/util';
-import { requireUser } from '@/lib/auth';
+import { requireUser, rateLimit, recordAttempt } from '@/lib/auth';
 import { publicDiscord } from '@/lib/discord';
-import { manageableGuilds, botInGuild, guildDetails } from '@/lib/discordApi';
+import { manageableGuilds, botInGuilds, guildDetails } from '@/lib/discordApi';
 import { slugFromDiscord, cleanSlug, cleanEmoji, cleanColor, cleanButtons, cleanPhone, mergeButtons, bump, shopProducts, mediaUrl, MAX_PRODUCTS, MAX_STOCK_PER_ADD, MAX_MEDIA_BYTES, FEE_PERCENT } from '@/lib/hub';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,7 @@ function ownerShop(s, user) {
     guild_id: s.guild_id, channel_id: s.channel_id, guild_verified: s.guild_verified, guild_name: s.guild_name,
     bot_in_guild: s.bot_in_guild, bot_note: s.bot_note, bot_seen_at: s.bot_seen_at,
     topup_phone: s.topup_phone || '', topup_enabled: !!s.topup_enabled,
+    panel_nonce: Number(s.panel_nonce || 0), panel_requested_at: s.panel_requested_at,
     buttons: mergeButtons(s.buttons), is_public: s.is_public, active: s.active,
     version: Number(s.version),
   };
@@ -82,7 +83,8 @@ async function handle(req, { params }) {
   };
   if (res === 'guilds' && !id && m === 'GET') {
     const list = (await myGuilds()).slice(0, 100);
-    const withBot = await Promise.all(list.map(async (g) => ({ ...g, bot: await botInGuild(g.id) })));
+    const flags = await botInGuilds(list);
+    const withBot = list.map((g, i) => ({ ...g, bot: flags[i] }));
     withBot.sort((a, b) => Number(b.bot === true) - Number(a.bot === true) || a.name.localeCompare(b.name));
     return json({ guilds: withBot, botChecked: !!process.env.DISCORD_BOT_TOKEN });
   }
@@ -251,11 +253,17 @@ async function handle(req, { params }) {
       if (!lines.length) throw new HttpError(400, 'ยังไม่ได้ใส่สต็อก (1 บรรทัด = 1 ชิ้น)');
       if (lines.length > MAX_STOCK_PER_ADD) throw new HttpError(400, `เพิ่มได้ครั้งละไม่เกิน ${MAX_STOCK_PER_ADD} ชิ้น`);
       if (lines.some((l) => l.length > 1000)) throw new HttpError(400, 'แต่ละชิ้นยาวได้ไม่เกิน 1000 ตัวอักษร');
-      await tx(async (c) => {
-        await c.query('INSERT INTO shop_stock(product_id,content) SELECT $1, unnest($2::text[])', [p.id, lines]);
-        await bump(c, shop.id);
+      // ตัดบรรทัดที่ซ้ำกับสต็อกที่ยังไม่ขายของสินค้านี้ (กันขายคีย์เดียวกันซ้ำสองคน)
+      const added = await tx(async (c) => {
+        const r = await c.query(
+          `INSERT INTO shop_stock(product_id,content)
+           SELECT $1::int, t.c FROM unnest($2::text[]) AS t(c)
+            WHERE NOT EXISTS (SELECT 1 FROM shop_stock s WHERE s.product_id=$1::int AND NOT s.sold AND s.content=t.c)`,
+          [p.id, lines]);
+        if (r.rowCount) await bump(c, shop.id);
+        return r.rowCount;
       });
-      return json({ ok: true, added: lines.length });
+      return json({ ok: true, added, skipped: lines.length - added });
     }
     if (m === 'DELETE') { // ล้างสต็อกที่ยังไม่ขายทั้งหมด
       await tx(async (c) => { await c.query('DELETE FROM shop_stock WHERE product_id=$1 AND NOT sold', [p.id]); await bump(c, shop.id); });
@@ -271,6 +279,17 @@ async function handle(req, { params }) {
       await bump(c, shop.id);
     });
     return json({ ok: true });
+  }
+
+  // ---------- รีเมนูใหม่: สั่งให้บอทลบแผงเดิมแล้วโพสต์แผงร้านใหม่ในห้องที่ตั้งไว้ (ไม่ต้องยกเลิก/เชื่อมเซิร์ฟเวอร์ใหม่) ----------
+  if (res === 'panel' && id === 'repost' && m === 'POST') {
+    need();
+    if (!shop.guild_id || !shop.channel_id) throw new HttpError(400, 'ยังไม่ได้เลือกเซิร์ฟเวอร์และห้อง');
+    if (!shop.guild_verified) throw new HttpError(409, 'เซิร์ฟเวอร์ยังไม่ผ่านการตรวจสอบจากบอท');
+    await rateLimit(`panel-repost:${user.id}`, 3, 1);
+    await recordAttempt(`panel-repost:${user.id}`);
+    const r = (await q('UPDATE shops SET panel_nonce=panel_nonce+1, panel_requested_at=now(), version=version+1, updated_at=now() WHERE id=$1 RETURNING panel_nonce', [shop.id])).rows[0];
+    return json({ ok: true, panel_nonce: Number(r.panel_nonce) });
   }
 
   // ---------- ออเดอร์ล่าสุด ----------

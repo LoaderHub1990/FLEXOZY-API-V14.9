@@ -8,3 +8,17 @@
 | `POST /api/v1/shop` `{action:"status",guildId,inGuild,verified,guildName,note}` | บอทรายงานสถานะเซิร์ฟเวอร์ |
 | `POST /api/v1/shop` `{action:"buy",guildId,productId,qty}` + `X-Discord-Id` | ซื้อสินค้า |
 อีโมจิในปุ่ม/สินค้าเป็นรูปแบบ Discord ตรงๆ เช่น `<a:name:123>` (เคลื่อนไหว) ใช้ใส่ปุ่มได้เลย
+
+## รีเมนูใหม่ (panel_nonce)
+เจ้าของร้านกดปุ่ม **รีเมนูใหม่** ที่แดชบอร์ด → เว็บเพิ่ม `panel_nonce` ของร้านนั้น +1 และเพิ่ม `version`
+- `GET /api/v1/shop` (บอท): ในบล็อก `bot` มี `panel_nonce`
+- `GET /api/bot/shops`: แต่ละร้านมี `panelNonce` · `?guild=<id>` ก็มี `panelNonce`
+
+ฝั่งบอท (ใส่ในลูปที่ซิงก์ร้านทุก 5 วิ): เก็บ `panelNonce` ที่โพสต์ล่าสุดไว้ใน `data/guilds/<guildId>.json`
+```js
+if (shop.bot.panel_nonce !== saved.panelNonce) {
+  // 1) ลบข้อความแผงเดิม (saved.messageId) ถ้ายังอยู่ — ลบไม่ได้/ไม่เจอก็ข้ามได้
+  // 2) โพสต์แผงใหม่ในห้อง shop.bot.channel_id แล้วเก็บ messageId ใหม่
+  // 3) saved.panelNonce = shop.bot.panel_nonce; เขียนไฟล์
+}
+```

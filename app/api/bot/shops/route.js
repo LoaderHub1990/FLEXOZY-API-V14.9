@@ -18,14 +18,14 @@ export const GET = route(async (req) => {
     const origin = (process.env.SITE_URL || 'https://flexozy.site').replace(/\/+$/, '');
     return json({
       ...publicShop(s, await shopProducts(s.id), { origin }),
-      guildId: s.guild_id, channelId: s.channel_id, verified: s.guild_verified, ownerDiscordId: s.owner_discord_id,
+      guildId: s.guild_id, channelId: s.channel_id, verified: s.guild_verified, ownerDiscordId: s.owner_discord_id, panelNonce: Number(s.panel_nonce || 0),
     });
   }
   const { rows } = await q(
-    `SELECT s.id,s.slug,s.guild_id,s.channel_id,s.version,s.guild_verified,u.discord_id AS owner_discord_id
+    `SELECT s.id,s.slug,s.guild_id,s.channel_id,s.version,s.guild_verified,s.panel_nonce,u.discord_id AS owner_discord_id
        FROM shops s JOIN users u ON u.id=s.owner_id WHERE s.guild_id IS NOT NULL AND s.active AND NOT u.banned ORDER BY s.id`);
   return json({
-    shops: rows.map((r) => ({ id: r.id, slug: r.slug, guildId: r.guild_id, channelId: r.channel_id, version: Number(r.version), verified: r.guild_verified, ownerDiscordId: r.owner_discord_id })),
+    shops: rows.map((r) => ({ id: r.id, slug: r.slug, guildId: r.guild_id, channelId: r.channel_id, version: Number(r.version), verified: r.guild_verified, ownerDiscordId: r.owner_discord_id, panelNonce: Number(r.panel_nonce || 0) })),
   });
 });
 
