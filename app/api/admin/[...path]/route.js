@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { route, json, body } from '@/lib/api';
 import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int, safeImage, safeUrl } from '@/lib/util';
@@ -315,6 +316,43 @@ async function handle(req, { params }) {
         if (b.banned) await q('DELETE FROM sessions WHERE user_id=$1', [target]);
       }
       if (b.role === 'admin' || b.role === 'user') await q('UPDATE users SET role=$1 WHERE id=$2', [b.role, target]);
+      return json({ ok: true });
+    }
+  }
+
+  // ---------- redeem codes (โค้ดเติมเงิน) ----------
+  if (res === 'redeemcodes') {
+    if (m === 'GET') return json({ rows: (await q('SELECT * FROM redeem_codes ORDER BY created_at DESC LIMIT 500')).rows });
+    if (m === 'POST') {
+      const b = await body(req);
+      const amount = Math.round(Number(b.amount) * 100);
+      if (!Number.isFinite(amount) || amount < 100 || amount > 100000000) throw new HttpError(400, 'จำนวนเงินต้องอยู่ระหว่าง 1 – 1,000,000 บาท');
+      const count = int(b.count || 1, { min: 1, max: 200, name: 'จำนวนโค้ด' });
+      const maxUses = int(b.max_uses || 1, { min: 1, max: 1000000, name: 'จำนวนสิทธิ์ต่อโค้ด' });
+      const exp = b.expires_at ? new Date(b.expires_at) : null;
+      if (exp && isNaN(exp)) throw new HttpError(400, 'วันหมดอายุไม่ถูกต้อง');
+      const note = str(b.note, { max: 100 });
+      const custom = str(b.code, { max: 40 }).toUpperCase().replace(/\s+/g, '');
+      if (custom && !/^[A-Z0-9_-]{4,40}$/.test(custom)) throw new HttpError(400, 'โค้ดใช้ได้เฉพาะ A-Z 0-9 _ - (4–40 ตัว)');
+      const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const gen = () => 'FX-' + [0, 1, 2].map(() => Array.from({ length: 4 }, () => A[crypto.randomInt(A.length)]).join('')).join('-');
+      const made = [];
+      for (let i = 0; i < (custom ? 1 : count); i++) {
+        const code = custom || gen();
+        const r = await one(
+          'INSERT INTO redeem_codes(code,amount,max_uses,note,expires_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT (code) DO NOTHING RETURNING code',
+          [code, amount, maxUses, note, exp]);
+        if (r) made.push(r.code); else if (custom) throw new HttpError(409, 'มีโค้ดนี้อยู่แล้ว');
+      }
+      return json({ ok: true, codes: made });
+    }
+    if (m === 'PUT') {
+      const b = await body(req);
+      await q('UPDATE redeem_codes SET active=$2 WHERE code=$1', [str(id, { min: 1, max: 40 }), b.active !== false]);
+      return json({ ok: true });
+    }
+    if (m === 'DELETE') {
+      await q('DELETE FROM redeem_codes WHERE code=$1', [str(id, { min: 1, max: 40 }).toUpperCase()]);
       return json({ ok: true });
     }
   }

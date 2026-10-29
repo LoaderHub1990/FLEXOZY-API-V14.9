@@ -15,13 +15,16 @@ const ST = {
 const MT = {
   bank: { name: 'โอนผ่านธนาคาร', sub: 'ตรวจสลิปอัตโนมัติ', cls: 'bank', ico: '🏦' },
   truemoney: { name: 'TrueMoney Gift', sub: 'รับซองอัตโนมัติ', cls: 'tmn', ico: '🎁' },
+  code: { name: 'เติมเงินด้วยโค้ด', sub: 'โค้ดจากทางร้าน', cls: 'code', ico: '🎟️' },
   manual: { name: 'PromptPay (เดิม)', sub: 'แอดมินอนุมัติ', cls: 'old', ico: '🧾' },
 };
 
 function Topup({ user, minTopup, canTrueMoney, truemoneyEnabled = true }) {
   const router = useRouter();
+  const [open, setOpen] = useState(null); // 'tm' | 'code' | null — หน้าต่างที่เด้งขึ้นตอนกดช่องทาง
   const [voucher, setVoucher] = useState('');
-  const [tmBusy, setTmBusy] = useState(false);
+  const [codeIn, setCodeIn] = useState('');
+  const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const [data, setData] = useState({ topups: [], summary: { total: 0, count: 0 } });
   const [flt, setFlt] = useState('all');
@@ -30,13 +33,17 @@ function Topup({ user, minTopup, canTrueMoney, truemoneyEnabled = true }) {
   const load = useCallback(() => api('/api/topup').then(setData).catch(() => {}), []);
   useEffect(() => { load(); }, [load]);
 
-  async function redeemTrueMoneyVoucher() {
-    setMsg(null); setDone(null); setTmBusy(true);
+  const show = (k) => { setMsg(null); setDone(null); setOpen(k); };
+  const hide = () => { setOpen(null); setMsg(null); setDone(null); };
+  async function submit(kind) {
+    setMsg(null); setDone(null); setBusy(true);
     try {
-      const r = await api('/api/topup/truemoney', 'POST', { voucher: voucher.trim() });
-      setVoucher(''); setBalance(r.balance); setDone({ amount: r.amount, balance: r.balance, tm: true }); load(); router.refresh();
+      const r = kind === 'tm'
+        ? await api('/api/topup/truemoney', 'POST', { voucher: voucher.trim() })
+        : await api('/api/topup/redeem', 'POST', { code: codeIn.trim() });
+      setVoucher(''); setCodeIn(''); setBalance(r.balance); setDone({ amount: r.amount, balance: r.balance }); load(); router.refresh();
     } catch (e) { setMsg({ t: 'err', m: e.message }); }
-    finally { setTmBusy(false); }
+    finally { setBusy(false); }
   }
 
   const list = data.topups.filter((t) => flt === 'all' || (flt === 'bank' ? t.method === 'bank' || t.method === 'manual' : t.method === flt));
@@ -44,9 +51,9 @@ function Topup({ user, minTopup, canTrueMoney, truemoneyEnabled = true }) {
   return (
     <div className="topup-rzx">
       <div className="topup-rzx-head">
-        <div className="topup-rzx-eyebrow"><span>✓</span> เติมเงินผ่าน TrueMoney Gift ไม่มีค่าธรรมเนียม</div>
-        <h2>เติมเงินเข้ากระเป๋า</h2>
-        <p>เติม 10 บาท ได้ 10 บาท · เครดิตเข้าทันทีหลังระบบตรวจสอบ</p>
+        <div className="topup-rzx-eyebrow">WALLET</div>
+        <h2>ช่องทางเติมเงิน</h2>
+        <p>เลือกช่องทางที่สะดวก ระบบจะแจ้งรายละเอียดก่อนทำรายการทุกครั้ง</p>
       </div>
 
       <div className="tp-stats">
@@ -56,52 +63,71 @@ function Topup({ user, minTopup, canTrueMoney, truemoneyEnabled = true }) {
       </div>
 
       <div className="topup-rzx-methods" aria-label="ช่องทางเติมเงิน">
-        <button type="button" className={'topup-rzx-card' + ' selected' + (truemoneyEnabled ? '' : ' disabled')} disabled={!truemoneyEnabled} onClick={() => {}}>
+        <button type="button" className={'topup-rzx-card' + (truemoneyEnabled ? '' : ' disabled')} disabled={!truemoneyEnabled} onClick={() => show('tm')}>
           <span className="topup-rzx-icon"><img src="/uploads/payments/truemoney-gift.png" alt="TrueMoney Gift" /></span>
-          <span className="topup-rzx-copy"><b>TrueMoney Gift</b><small>วางลิงก์ซองของขวัญ<br />ระบบรับซองให้อัตโนมัติ</small>{truemoneyEnabled ? <em><i />ค่าธรรมเนียม 0 บาท</em> : <em className="off">ปิดใช้งานชั่วคราว</em>}</span>
-          <span className="topup-rzx-arrow">›</span>
+          <span className="topup-rzx-copy"><b>TrueMoney Gift</b><small>เติมเงินผ่านซองทรูมันนี่</small>{truemoneyEnabled ? <em><i />ไม่มีค่าธรรมเนียม</em> : <em className="off">ปิดใช้งานชั่วคราว</em>}</span>
+          <span className="topup-rzx-arrow">↗</span>
+        </button>
+        <button type="button" className="topup-rzx-card" onClick={() => show('code')}>
+          <span className="topup-rzx-icon"><img src="/uploads/payments/redeem.png" alt="Redeem Code" /></span>
+          <span className="topup-rzx-copy"><b>เติมเงินด้วยโค้ด</b><small>เติมเงินด้วยรหัสคูปอง</small><em><i />ไม่มีค่าธรรมเนียม</em></span>
+          <span className="topup-rzx-arrow">↗</span>
         </button>
       </div>
+      <p className="topup-rzx-note">กรุณาตรวจสอบชื่อผู้รับและยอดเงินให้ถูกต้องก่อนยืนยันรายการ</p>
 
-      <div className="topup-rzx-detail">
-        {done && (
-          <div className="tp-done">
-            <div className="tp-done-ico">✓</div>
-            <div className="tp-done-t">เติมเงินสำเร็จ</div>
-            <div className="tp-done-amt">+{baht(done.amount)} ฿</div>
-            <div className="tp-done-s">ยอดคงเหลือตอนนี้ {baht(done.balance)} ฿</div>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
-              <a className="btn btn-primary" href="/store">ไปเลือกซื้อสินค้า</a>
-              <button className="btn" onClick={() => setDone(null)}>เติมเพิ่ม</button>
+      {open && (
+        <Modal onClose={hide}>
+          {done ? (
+            <div className="tp-done">
+              <div className="tp-done-ico">✓</div>
+              <div className="tp-done-t">เติมเงินสำเร็จ</div>
+              <div className="tp-done-amt">+{baht(done.amount)} ฿</div>
+              <div className="tp-done-s">ยอดคงเหลือตอนนี้ {baht(done.balance)} ฿</div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+                <a className="btn btn-primary" href="/store">ไปเลือกซื้อสินค้า</a>
+                <button className="btn" onClick={hide}>ปิด</button>
+              </div>
             </div>
-          </div>
-        )}
-
-        {!done && truemoneyEnabled && (
-          <div className="topup-rzx-form">
-            {!canTrueMoney && <div className="msg err">ร้านยังไม่ได้ตั้งค่า TRUEMONEY_MOBILE</div>}
-            <div className="topup-rzx-form-title">TrueMoney Gift</div>
-            <div className="topup-rzx-form-sub">วางลิงก์ซองของขวัญ ระบบจะกดรับเข้ากระเป๋าร้านแล้วเติมเครดิตเท่ายอดในซองทันที</div>
-            <input className="input" value={voucher} onChange={(e) => setVoucher(e.target.value)} placeholder="https://gift.truemoney.com/campaign/?v=..." autoComplete="off" />
-            <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={tmBusy || !canTrueMoney || !voucher.trim()} onClick={redeemTrueMoneyVoucher}>
-              {tmBusy ? <><span className="spin" /> กำลังรับซอง...</> : 'รับซองและเติมเงิน'}
-            </button>
-            <ul className="tp-tips">
-              <li>สร้างซองแบบ <b>ผู้รับ 1 คน</b> เท่านั้น</li>
-              <li>ขั้นต่ำ {minTopup} บาท · ซองที่รับแล้วใช้ซ้ำไม่ได้</li>
-              <li>ได้เครดิตเท่ายอดที่ TrueMoney ยืนยันว่าเข้าจริง</li>
-            </ul>
-          </div>
-        )}
-
-        {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
-      </div>
+          ) : open === 'tm' ? (
+            <div className="topup-rzx-form">
+              {!canTrueMoney && <div className="msg err">ร้านยังไม่ได้ตั้งค่า TRUEMONEY_MOBILE</div>}
+              <div className="topup-rzx-form-title">TrueMoney Gift</div>
+              <div className="topup-rzx-form-sub">วางลิงก์ซองของขวัญ ระบบจะกดรับเข้ากระเป๋าร้านแล้วเติมเครดิตเท่ายอดในซองทันที</div>
+              <input className="input" autoFocus value={voucher} onChange={(e) => setVoucher(e.target.value)} placeholder="https://gift.truemoney.com/campaign/?v=..." autoComplete="off" />
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={busy || !canTrueMoney || !voucher.trim()} onClick={() => submit('tm')}>
+                {busy ? <><span className="spin" /> กำลังรับซอง...</> : 'รับซองและเติมเงิน'}
+              </button>
+              <ul className="tp-tips">
+                <li>สร้างซองแบบ <b>ผู้รับ 1 คน</b> เท่านั้น</li>
+                <li>ขั้นต่ำ {minTopup} บาท · ซองที่รับแล้วใช้ซ้ำไม่ได้</li>
+                <li>ได้เครดิตเท่ายอดที่ TrueMoney ยืนยันว่าเข้าจริง</li>
+              </ul>
+              {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
+            </div>
+          ) : (
+            <form className="topup-rzx-form" onSubmit={(e) => { e.preventDefault(); if (codeIn.trim() && !busy) submit('code'); }}>
+              <div className="topup-rzx-form-title">เติมเงินด้วยโค้ด</div>
+              <div className="topup-rzx-form-sub">กรอกโค้ดที่ได้รับจากทางร้าน เครดิตจะเข้ากระเป๋าทันที</div>
+              <input className="input code-in" autoFocus value={codeIn} onChange={(e) => setCodeIn(e.target.value.toUpperCase())} placeholder="FX-XXXX-XXXX-XXXX" autoComplete="off" spellCheck={false} maxLength={40} />
+              <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={busy || !codeIn.trim()}>
+                {busy ? <><span className="spin" /> กำลังตรวจสอบ...</> : 'ใช้โค้ด'}
+              </button>
+              <ul className="tp-tips">
+                <li>1 โค้ดใช้ได้ 1 ครั้งต่อบัญชี และอาจมีวันหมดอายุ</li>
+                <li>ไม่มีค่าธรรมเนียม ได้เครดิตเต็มจำนวนตามโค้ด</li>
+              </ul>
+              {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
+            </form>
+          )}
+        </Modal>
+      )}
 
       <div className="topup-rzx-history">
         <div className="topup-rzx-history-head">
           <h3>ประวัติการเติมเงิน</h3>
           <div className="tp-flt">
-            {[['all', 'ทั้งหมด'], ['bank', 'ธนาคาร'], ['truemoney', 'TrueMoney']].map(([k, l]) => <button key={k} className={flt === k ? 'on' : ''} onClick={() => setFlt(k)}>{l}</button>)}
+            {[['all', 'ทั้งหมด'], ['truemoney', 'TrueMoney'], ['code', 'โค้ด']].map(([k, l]) => <button key={k} className={flt === k ? 'on' : ''} onClick={() => setFlt(k)}>{l}</button>)}
           </div>
         </div>
         <div className="tp-list">
