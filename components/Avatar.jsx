@@ -20,7 +20,7 @@ export function Avatar({ p, size = 40, frame = true }) {
 export function ProfileCard({ p, children }) {
   const bg = p.banner
     ? { backgroundImage: `url("${p.banner}")` }
-    : { background: p.accent ? `linear-gradient(135deg, ${p.accent}, #1b1b3a)` : 'linear-gradient(135deg,#5d30d9,#1e3a8a 70%,#0ea5e9)' };
+    : { background: p.accent ? `linear-gradient(135deg, ${p.accent}, #1b1b3a)` : 'linear-gradient(135deg,#2f7bff,#1e3a8a 70%,#0ea5e9)' };
   return (
     <div className="pc">
       <div className="pc-banner" style={bg} />

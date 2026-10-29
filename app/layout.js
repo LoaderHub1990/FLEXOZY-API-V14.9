@@ -1,9 +1,12 @@
 import './globals.css';
+import './theme.css';
 import { headers } from 'next/headers';
 import { getUser } from '@/lib/auth';
 import { getSettings } from '@/lib/shop';
 import Shell from '@/components/Shell';
 import Effects from '@/components/Effects';
+import { ADMIN_PATH } from '@/lib/adminPath';
+import Backdrop from '@/components/Backdrop';
 import { discordConfigured, publicDiscord, publicProfile } from '@/lib/discord';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +59,7 @@ export default async function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#5d30d9" />
+        <meta name="theme-color" content="#05070c" />
         <script dangerouslySetInnerHTML={{ __html: earlyScript }} />
       </head>
       <body>
@@ -74,8 +77,9 @@ export default async function RootLayout({ children }) {
         </div>
         {/* แสงสปอตไลต์เฉียงด้านหลัง (โทนเดียวกับต้นฉบับ) */}
         <div className="spot" aria-hidden="true"><i /><i /><i /></div>
+        <Backdrop />
         <Effects />
-        <Shell user={u} settings={settings} discordLogin={discordConfigured()}>{children}</Shell>
+        <Shell user={u} settings={settings} discordLogin={discordConfigured()} adminPath={u?.role === 'admin' ? ADMIN_PATH : undefined}>{children}</Shell>
       </body>
     </html>
   );

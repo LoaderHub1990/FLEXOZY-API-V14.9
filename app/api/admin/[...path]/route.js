@@ -352,6 +352,8 @@ async function handle(req, { params }) {
         shop_name: str(b.shop_name, { min: 1, max: 40, name: 'ชื่อร้าน' }),
         tagline: str(b.tagline, { max: 200 }),
         footer_text: str(b.footer_text, { max: 200 }),
+        announce_text: str(b.announce_text, { max: 300 }),
+        banner_image: safeImage(b.banner_image),
         discord_url: safeUrl(b.discord_url),
         logo: safeImage(b.logo),
         meta_title: str(b.meta_title, { max: 70, name: 'ชื่อพรีวิวลิงก์' }),

@@ -10,6 +10,9 @@ import { perfAllowed } from './consent';
 import Captcha from './Captcha';
 import { Avatar, ProfileCard } from './Avatar';
 
+// แดชบอร์ดเจ้าของร้าน (Hub) อยู่โดเมนเดียวกัน — middleware rewrite ไป app/hub/dashboard
+const DASH = '/shop/dashboard';
+
 const Ctx = createContext(null);
 export const useShell = () => useContext(Ctx);
 
@@ -198,7 +201,7 @@ function popupItems(s) {
   try { const a = JSON.parse(s.popup_items || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
 }
 
-export default function Shell({ user, settings, discordLogin, children }) {
+export default function Shell({ user, settings, discordLogin, adminPath = 'admin', children }) {
   const path = usePathname();
   const router = useRouter();
   const [modal, setModal] = useState(null);
@@ -241,7 +244,8 @@ export default function Shell({ user, settings, discordLogin, children }) {
           <Link href="/account?tab=profile">ตั้งค่าโปรไฟล์</Link>
           <Link href="/account">บัญชีของฉัน / เติมเงิน</Link>
           <Link href="/account?tab=orders">ประวัติการสั่งซื้อ</Link>
-          {user.role === 'admin' && <Link href="/admin">จัดการหลังบ้าน</Link>}
+          <a href={DASH}>แดชบอร์ดร้านค้า (Hub)</a>
+          {user.role === 'admin' && <Link href={`/${adminPath}`}>จัดการหลังบ้าน</Link>}
           <button onClick={logout}>ออกจากระบบ</button>
         </div>
       )}
@@ -252,33 +256,41 @@ export default function Shell({ user, settings, discordLogin, children }) {
     <Ctx.Provider value={{ user, settings, openAuth: (m) => open('auth:' + m), openSearch: () => open('search'), openContact: () => open('contact'), openCookies: () => setCookieOpen(true) }}>
       <header className="header">
         <nav className="nav-d" aria-label="เมนูหลัก">
-          <Link href="/" className="brand"><img src={settings.logo} alt="" /><span>{settings.shop_name}</span></Link>
-          <div className="nav-links">
-            <Link href="/" className={'nav-link' + (act('/') ? ' active' : '')}>หน้าหลัก</Link>
-            <Link href="/store" className={'nav-link' + (act('/store') ? ' active' : '')}>ร้านค้า</Link>
-            <Link href="/account?tab=topup" className={'nav-link' + (act('/account') ? ' active' : '')}>เติมเงิน</Link>
-            <button className="nav-link" onClick={() => open('contact')}>ติดต่อเรา</button>
-          </div>
-          <div className="nav-right">
-            {user ? <UserMenu /> : (
-              <>
-                <button className="btn" onClick={() => open('auth:login')}>เข้าสู่ระบบ</button>
-                <button className="btn btn-primary" onClick={() => open('auth:register')}>สมัครสมาชิก</button>
-              </>
-            )}
+          <div className="nav-in">
+            <Link href="/" className="brand"><img src={settings.logo} alt="" /><span>{settings.shop_name}</span></Link>
+            <div className="nav-links">
+              <Link href="/" className={'nav-link' + (path === '/' ? ' active' : '')}>หน้าหลัก</Link>
+              <Link href="/store" className={'nav-link' + (act('/store') ? ' active' : '')}>หมวดหมู่สินค้า</Link>
+              <Link href="/account?tab=topup" className={'nav-link' + (act('/account') ? ' active' : '')}>เติมเงิน</Link>
+              {/* หน้า Hub ใช้โครงหน้าของตัวเอง → ต้องเป็นลิงก์ธรรมดา (โหลดหน้าใหม่) ไม่ใช้ next/link */}
+              <a href={DASH} className="nav-link nav-dash"><Icon n="dash" size={15} /> แดชบอร์ด</a>
+              <button className="nav-link" onClick={() => open('contact')}>ติดต่อเรา</button>
+            </div>
+            <div className="nav-right">
+              <button className="icon-btn" onClick={() => open('search')} aria-label="ค้นหา (Ctrl+K)" title="ค้นหา (Ctrl+K)"><Icon n="search" size={17} /></button>
+              {user ? <UserMenu /> : (
+                <>
+                  <button className="btn" onClick={() => open('auth:register')}>สมัครสมาชิก</button>
+                  <button className="btn btn-white" onClick={() => open('auth:login')}><Icon n="arrow" size={15} /> เข้าสู่ระบบ</button>
+                </>
+              )}
+            </div>
           </div>
         </nav>
         <div className="nav-m" style={{ position: 'relative' }}>
           <Link href="/" className="brand"><img src={settings.logo} alt="" /><span>{settings.shop_name}</span></Link>
-          {user ? <UserMenu /> : <button className="btn btn-sm btn-primary" onClick={() => open('auth:login')}>เข้าสู่ระบบ</button>}
+          <div className="nav-right">
+            <button className="icon-btn" onClick={() => open('search')} aria-label="ค้นหา"><Icon n="search" size={17} /></button>
+            {user ? <UserMenu /> : <button className="btn btn-sm btn-white" onClick={() => open('auth:login')}>เข้าสู่ระบบ</button>}
+          </div>
         </div>
       </header>
 
       <nav className="tabbar" aria-label="เมนูมือถือ">
-        <Link href="/" className={'tab' + (act('/') ? ' active' : '')}><Icon n="home" />หน้าหลัก</Link>
+        <Link href="/" className={'tab' + (path === '/' ? ' active' : '')}><Icon n="home" />หน้าหลัก</Link>
         <Link href="/store" className={'tab' + (act('/store') ? ' active' : '')}><Icon n="store" />ร้านค้า</Link>
         <Link href="/account?tab=topup" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="wallet" />เติมเงิน</Link>
-        <button className="tab" onClick={() => open('search')}><Icon n="search" />ค้นหา</button>
+        <a href={DASH} className="tab"><Icon n="dash" />แดชบอร์ด</a>
         {user ? (
           <Link href="/account" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="user" />บัญชี</Link>
         ) : (
@@ -301,6 +313,7 @@ export default function Shell({ user, settings, discordLogin, children }) {
               <Link className="fl" href="/">หน้าหลัก</Link>
               <Link className="fl" href="/store">ร้านค้า</Link>
               <Link className="fl" href="/account?tab=topup">เติมเงิน</Link>
+              <a className="fl" href={DASH}>แดชบอร์ด</a>
               <Link className="fl" href="/privacy">นโยบายความเป็นส่วนตัว</Link>
             </div>
             <div>

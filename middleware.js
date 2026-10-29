@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { RESERVED_SLUGS } from './lib/reserved.js';
+import { ADMIN_PATH } from './lib/adminPath.js';
 
 // Hub (ร้านค้าบอท Discord) อยู่บนโดเมนหลักเดียวกัน:
 //   flexozy.site/shop/login      → หน้าล็อกอิน/สมัคร
@@ -30,6 +31,18 @@ export function middleware(req) {
     if (seg[1] === 'dashboard') return redirect(`${BASE}/dashboard`);
     if (seg[1] === 's' && seg[2]) return redirect(`/${seg[2]}`);
     return redirect(`${BASE}/login`);
+  }
+
+  // หลังบ้าน: เข้าได้เฉพาะ /<ADMIN_PATH> (rewrite ไป app/admin) ส่วน /admin ตรงๆ ตอบ 404
+  if (seg.length === 1 && seg[0].toLowerCase() === ADMIN_PATH) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/admin';
+    return NextResponse.rewrite(url);
+  }
+  if (seg[0] && seg[0].toLowerCase() === 'admin') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/__not_found__';
+    return NextResponse.rewrite(url);
   }
 
   const headers = new Headers(req.headers);

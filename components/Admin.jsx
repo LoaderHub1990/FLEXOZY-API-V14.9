@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, baht, fmtDate } from './api';
 import { Modal } from './Shell';
 import RobloxChip from './RobloxChip';
+import Icon from './Icons';
 import { fmtDuration, keyStatus } from '@/lib/duration';
 
 const A = (p) => '/api/admin/' + p;
@@ -29,14 +30,44 @@ function Loading({ err, onRetry }) {
   );
 }
 
-function Overview() {
+function Overview({ go }) {
   const [s, setS] = useState(null);
   const [err, setErr] = useState('');
   const load = useCallback(() => { setErr(''); api(A('stats')).then(setS).catch((e) => setErr(e.message)); }, []);
   useEffect(() => { load(); }, [load]);
   if (!s) return <Loading err={err} onRetry={load} />;
-  const K = [['สมาชิก', s.users], ['ออเดอร์', s.orders], ['รายได้รวม', baht(s.revenue) + ' ฿'], ['รายได้ 24 ชม.', baht(s.revenue_today) + ' ฿'], ['เติมเงินรอตรวจ', s.pending_topups], ['สต็อกคงเหลือ', s.stock], ['ยอดเงินในระบบ', baht(s.balances) + ' ฿']];
-  return <div className="kv">{K.map(([l, v]) => <div className="panel" key={l}><span className="muted">{l}</span><b>{v}</b></div>)}</div>;
+  const Big = ({ ic, l, v, u, tone = '' }) => (
+    <div className={'kpi big ' + tone}><span className="kpi-ic"><Icon n={ic} size={19} /></span><span className="kpi-l">{l}</span><b className="kpi-v">{v}{u && <small>{u}</small>}</b></div>
+  );
+  const Kpi = ({ ic, l, v, u, tone = '', to }) => {
+    const inner = (<><span className="kpi-ic"><Icon n={ic} size={18} /></span><span className="kpi-l">{l}</span><b className="kpi-v">{v}{u && <small>{u}</small>}</b>{to && <Icon n="arrow" size={15} className="kpi-go" />}</>);
+    return to ? <button type="button" className={'kpi ' + tone} onClick={() => go(to)}>{inner}</button> : <div className={'kpi ' + tone}>{inner}</div>;
+  };
+  const QA = ({ ic, t, d, to }) => (
+    <button type="button" className="qa" onClick={() => go(to)}><span className="kpi-ic"><Icon n={ic} size={16} /></span><span><b>{t}</b><small>{d}</small></span></button>
+  );
+  return (
+    <>
+      <div className="adm-hero">
+        <Big ic="wallet" l="รายได้รวม" v={baht(s.revenue)} u="฿" />
+        <Big ic="flame" l="รายได้ 24 ชั่วโมงล่าสุด" v={baht(s.revenue_today)} u="฿" tone="green" />
+        <Big ic="layers" l="ยอดเงินคงเหลือของสมาชิกในระบบ" v={baht(s.balances)} u="฿" tone="cyan" />
+      </div>
+      <div className="adm-kpis">
+        <Kpi ic="users" l="สมาชิกทั้งหมด" v={s.users} to="users" />
+        <Kpi ic="receipt" l="ออเดอร์ทั้งหมด" v={s.orders} to="orders" />
+        <Kpi ic="box" l="สต็อกคงเหลือ" v={s.stock} u="ชิ้น" to="products" tone="cyan" />
+        <Kpi ic="bell" l="เติมเงินรอตรวจ" v={s.pending_topups} u="รายการ" to="topups" tone={'warn' + (s.pending_topups > 0 ? ' hot' : '')} />
+      </div>
+      <div className="adm-sec-h"><h3>ทางลัด</h3></div>
+      <div className="adm-quick">
+        <QA ic="box" t="จัดการสินค้า / สต็อก" d="เพิ่ม แก้ไข เติมสต็อก" to="products" />
+        <QA ic="key" t="จัดการคีย์" d="ค้นหา ระงับ ต่อเวลา รีเซ็ตเครื่อง" to="keys" />
+        <QA ic="ticket" t="โค้ดส่วนลด" d="สร้างและจำกัดสิทธิ์" to="coupons" />
+        <QA ic="cog" t="ตั้งค่าร้าน / แบนเนอร์" d="โลโก้ ประกาศ แบนเนอร์หน้าแรก" to="settings" />
+      </div>
+    </>
+  );
 }
 
 function Categories() {
@@ -466,7 +497,7 @@ function Settings() {
   return (
     <form className="panel" style={{ maxWidth: 640 }} onSubmit={save}>
       <h3>ตั้งค่าร้าน</h3>
-      {[['shop_name', 'ชื่อร้าน'], ['tagline', 'คำโปรยหน้าแรก'], ['footer_text', 'ข้อความท้ายเว็บ'], ['discord_url', 'ลิงก์ Discord (https://...) ใช้กับปุ่ม “ติดต่อเรา”'], ['discord_widget_id', 'Discord Server ID สำหรับวิดเจ็ตท้ายเว็บ (ว่าง = ไม่แสดงวิดเจ็ต)'], ['logo', 'ลิงก์โลโก้ (/uploads/... หรือ https://...)'], ['min_topup', 'ยอดเติมเงินขั้นต่ำ (บาท)', 'number']].map(F)}
+      {[['shop_name', 'ชื่อร้าน'], ['tagline', 'คำโปรยหน้าแรก'], ['footer_text', 'ข้อความท้ายเว็บ'], ['announce_text', 'ข้อความแถบประกาศหน้าแรก (วิ่งใต้สถิติ)'], ['banner_image', 'ลิงก์แบนเนอร์ใหญ่หน้าแรก (รองรับ GIF/WebP เคลื่อนไหว เช่น /banner.webp)'], ['discord_url', 'ลิงก์ Discord (https://...) ใช้กับปุ่ม “ติดต่อเรา”'], ['discord_widget_id', 'Discord Server ID สำหรับวิดเจ็ตท้ายเว็บ (ว่าง = ไม่แสดงวิดเจ็ต)'], ['logo', 'ลิงก์โลโก้ (/uploads/... หรือ https://...)'], ['min_topup', 'ยอดเติมเงินขั้นต่ำ (บาท)', 'number']].map(F)}
       <h3 style={{ marginTop: 28 }}>พรีวิวตอนวางลิงก์ (Discord / Facebook / LINE)</h3>
       <div className="subtle" style={{ fontSize: 12.5, marginTop: 4 }}>รูป + ชื่อ + คำอธิบายที่จะขึ้นเมื่อมีคนวางลิงก์เว็บ — ถ้าเคยวางลิงก์ไปแล้ว แพลตฟอร์มอาจแคชของเก่าไว้สักพัก</div>
       {[['meta_title', 'ชื่อที่แสดง (เช่น Flexozy Hub)'], ['meta_description', 'ข้อความอธิบาย'], ['og_image', 'ลิงก์รูปพรีวิว (/og.jpg หรือ https://...) ขนาดแนะนำ 1200×630']].map(F)}
@@ -547,16 +578,55 @@ function ApiKeys() {
   );
 }
 
-const TABS = [['overview', 'ภาพรวม', Overview], ['products', 'สินค้า/สต็อก', Products], ['categories', 'หมวดหมู่', Categories], ['topups', 'เติมเงิน', Topups], ['orders', 'ออเดอร์', Orders], ['keys', 'คีย์', Keys], ['reviews', 'รีวิว', Reviews], ['users', 'สมาชิก', Users], ['coupons', 'โค้ดส่วนลด', Coupons], ['apikeys', 'API Key', ApiKeys], ['settings', 'ตั้งค่า', Settings]];
+const TABS = [
+  ['overview', 'ภาพรวม', Overview, 'dash', 'สรุปยอดขายและสถานะร้านแบบเรียลไทม์', 'หลัก'],
+  ['products', 'สินค้า / สต็อก', Products, 'box', 'เพิ่ม แก้ไข และเติมสต็อกสินค้า', 'ร้านค้า'],
+  ['categories', 'หมวดหมู่', Categories, 'grid', 'จัดหมวดหมู่และรูปแบนเนอร์หน้าแรก', 'ร้านค้า'],
+  ['orders', 'ออเดอร์', Orders, 'receipt', 'ประวัติการสั่งซื้อทั้งหมด', 'ร้านค้า'],
+  ['keys', 'คีย์', Keys, 'key', 'คีย์อัตโนมัติ ตรวจสอบ ระงับ และรีเซ็ตเครื่อง', 'ร้านค้า'],
+  ['reviews', 'รีวิว', Reviews, 'star', 'รีวิวจากลูกค้า ลบรีวิวที่ไม่เหมาะสม', 'ร้านค้า'],
+  ['topups', 'เติมเงิน', Topups, 'wallet', 'ตรวจและอนุมัติรายการเติมเงิน', 'การเงิน'],
+  ['coupons', 'โค้ดส่วนลด', Coupons, 'ticket', 'สร้างโค้ดส่วนลดและกำหนดเงื่อนไข', 'การเงิน'],
+  ['users', 'สมาชิก', Users, 'users', 'ปรับยอด ระงับ และตั้งสิทธิ์แอดมิน', 'ระบบ'],
+  ['apikeys', 'API Key', ApiKeys, 'plug', 'คีย์สำหรับบอท Discord / ระบบภายนอก', 'ระบบ'],
+  ['settings', 'ตั้งค่า', Settings, 'cog', 'ชื่อร้าน แบนเนอร์ ประกาศ และช่องทางเติมเงิน', 'ระบบ'],
+];
+const DASH = '/shop/dashboard';
 
 export default function Admin() {
   const [tab, setTab] = useState('overview');
-  const Cur = TABS.find((t) => t[0] === tab)[2];
+  const cur = TABS.find((t) => t[0] === tab);
+  const Cur = cur[2];
+  const groups = [...new Set(TABS.map((t) => t[5]))];
   return (
-    <>
-      <div className="page-h"><h1>จัดการหลังบ้าน</h1></div>
-      <div className="atabs">{TABS.map(([k, l]) => <button key={k} className={'filter' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{l}</button>)}</div>
-      <Cur key={tab} />
-    </>
+    <div className="adm">
+      <aside className="adm-side" aria-label="เมนูหลังบ้าน">
+        <div className="adm-brand">
+          <span className="adm-brand-ic"><Icon n="shield" size={20} /></span>
+          <div><b>หลังบ้าน</b><small>Flexozy Admin</small></div>
+        </div>
+        {groups.map((g) => (
+          <div key={g} style={{ display: 'contents' }}>
+            <div className="adm-grp">{g}</div>
+            {TABS.filter((t) => t[5] === g).map(([k, l, , ic]) => (
+              <button key={k} type="button" className={'adm-nav' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}><Icon n={ic} size={17} />{l}</button>
+            ))}
+          </div>
+        ))}
+        <div className="adm-grp">ลิงก์ด่วน</div>
+        <a className="adm-nav adm-link" href="/"><Icon n="store" size={17} />ดูหน้าร้าน<Icon n="ext" size={13} className="ext" /></a>
+        <a className="adm-nav adm-link" href={DASH}><Icon n="dash" size={17} />แดชบอร์ดร้านค้า (Hub)<Icon n="ext" size={13} className="ext" /></a>
+      </aside>
+      <section className="adm-main">
+        <div className="adm-top">
+          <div><h1>{cur[1]}</h1><p>{cur[4]}</p></div>
+          <div className="adm-top-act">
+            <a className="btn btn-sm" href="/"><Icon n="store" size={15} /> หน้าร้าน</a>
+            <a className="btn btn-sm btn-primary" href={DASH}><Icon n="dash" size={15} /> ไปแดชบอร์ด</a>
+          </div>
+        </div>
+        <div className="adm-body"><Cur key={tab} go={setTab} /></div>
+      </section>
+    </div>
   );
 }
