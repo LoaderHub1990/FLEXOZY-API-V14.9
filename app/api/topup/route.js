@@ -5,11 +5,10 @@ import { requireUser } from '@/lib/auth';
 // ประวัติเติมเงินรวมทุกช่องทาง + สรุปยอด
 export const GET = route(async () => {
   const user = await requireUser();
-  const [slips, tms, olds, rds] = await Promise.all([
+  const [slips, tms, olds] = await Promise.all([
     q('SELECT * FROM slip_topups WHERE user_id=$1 ORDER BY id DESC LIMIT 50', [user.id]),
     q('SELECT * FROM truemoney_topups WHERE user_id=$1 ORDER BY id DESC LIMIT 50', [user.id]),
     q('SELECT * FROM topups WHERE user_id=$1 ORDER BY id DESC LIMIT 30', [user.id]),
-    q('SELECT * FROM redeem_uses WHERE user_id=$1 ORDER BY id DESC LIMIT 50', [user.id]),
   ]);
   const now = Date.now();
   const mask = (v) => (v.length > 8 ? `${v.slice(0, 4)}••••${v.slice(-3)}` : v);
@@ -26,10 +25,7 @@ export const GET = route(async () => {
     key: `p-${t.id}`, id: t.id, method: 'manual', amount: t.amount, ref: t.ref || '', note: '', created_at: t.created_at,
     status: t.status === 'pending' && now - new Date(t.created_at).getTime() > 86400000 ? 'expired' : t.status,
   }));
-  const rd = rds.rows.map((t) => ({
-    key: `r-${t.id}`, id: t.id, method: 'code', amount: t.amount, status: 'approved', ref: mask(t.code), note: '', created_at: t.created_at,
-  }));
-  const topups = [...bank, ...tm, ...old, ...rd].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
+  const topups = [...bank, ...tm, ...old].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
   const ok = topups.filter((t) => t.status === 'approved');
   const summary = {
     total: ok.reduce((n, t) => n + Number(t.amount), 0),

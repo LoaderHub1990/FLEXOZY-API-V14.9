@@ -471,57 +471,6 @@ function Coupons() {
     </Table></>);
 }
 
-function RedeemCodes() {
-  const { rows, err, load } = useList('redeemcodes');
-  const [f, setF] = useState({ amount: 50, count: 1, max_uses: 1, expires_at: '', note: '', code: '' });
-  const [e2, setE2] = useState('');
-  const [made, setMade] = useState([]);
-  const copy = (t) => navigator.clipboard?.writeText(t);
-  async function add(e) {
-    e.preventDefault(); setE2(''); setMade([]);
-    try { const r = await api(A('redeemcodes'), 'POST', f); setMade(r.codes); setF({ ...f, code: '' }); load(); } catch (x) { setE2(x.message); }
-  }
-  async function del(c) { if (confirm(`ลบโค้ด ${c} ?`)) { await api(A('redeemcodes/' + encodeURIComponent(c)), 'DELETE'); load(); } }
-  async function toggle(r) { await api(A('redeemcodes/' + encodeURIComponent(r.code)), 'PUT', { active: !r.active }); load(); }
-  return (
-    <>
-      <form className="panel" onSubmit={add} style={{ marginBottom: 18 }}>
-        <h3>สร้างโค้ดเติมเงิน</h3>
-        <p className="subtle" style={{ fontSize: 12.5, margin: '4px 0 10px' }}>ลูกค้ากรอกโค้ดที่หน้า “เติมเงิน → เติมเงินด้วยโค้ด” แล้วได้เครดิตทันที ปล่อยช่อง “โค้ดที่กำหนดเอง” ว่างเพื่อให้ระบบสุ่มให้ (รูปแบบ FX-XXXX-XXXX-XXXX)</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
-          <div><label className="label" style={{ marginTop: 0 }}>มูลค่า (บาท)</label><input className="input" type="number" min="1" step="0.01" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></div>
-          <div><label className="label" style={{ marginTop: 0 }}>จำนวนโค้ดที่สร้าง</label><input className="input" type="number" min="1" max="200" value={f.count} onChange={(e) => setF({ ...f, count: e.target.value })} /></div>
-          <div><label className="label" style={{ marginTop: 0 }}>ใช้ได้กี่คนต่อโค้ด</label><input className="input" type="number" min="1" value={f.max_uses} onChange={(e) => setF({ ...f, max_uses: e.target.value })} /></div>
-          <div><label className="label" style={{ marginTop: 0 }}>หมดอายุ (ไม่บังคับ)</label><input className="input" type="datetime-local" value={f.expires_at} onChange={(e) => setF({ ...f, expires_at: e.target.value })} /></div>
-          <div><label className="label" style={{ marginTop: 0 }}>โค้ดที่กำหนดเอง</label><input className="input" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} placeholder="เช่น NEWYEAR100" /></div>
-          <div><label className="label" style={{ marginTop: 0 }}>หมายเหตุ</label><input className="input" value={f.note} maxLength={100} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="แจกกิจกรรม..." /></div>
-        </div>
-        <Err m={e2} />
-        <button className="btn btn-primary" style={{ marginTop: 14 }}>สร้างโค้ด</button>
-        {made.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <div className="row"><b>สร้างแล้ว {made.length} โค้ด</b><button type="button" className="btn btn-sm" onClick={() => copy(made.join('\n'))}>คัดลอกทั้งหมด</button></div>
-            <div className="codebox" style={{ marginTop: 8 }}>{made.join('\n')}</div>
-          </div>
-        )}
-      </form>
-      <Err m={err} />
-      <Table head={['โค้ด', 'มูลค่า', 'ใช้แล้ว', 'หมดอายุ', 'สถานะ', '']}>
-        {(rows || []).map((r) => (
-          <tr key={r.code}>
-            <td><code style={{ cursor: 'pointer' }} onClick={() => copy(r.code)} title="คลิกเพื่อคัดลอก">{r.code}</code>{r.note && <div className="subtle" style={{ fontSize: 12 }}>{r.note}</div>}</td>
-            <td>{baht(r.amount)} ฿</td>
-            <td>{r.used} / {r.max_uses}</td>
-            <td>{r.expires_at ? fmtDate(r.expires_at) : '—'}</td>
-            <td><span className={'tag ' + (r.active && r.used < r.max_uses ? 'ok' : '')}>{!r.active ? 'ปิด' : r.used >= r.max_uses ? 'ใช้ครบ' : 'ใช้ได้'}</span></td>
-            <td style={{ whiteSpace: 'nowrap' }}><button className="btn btn-sm" onClick={() => toggle(r)}>{r.active ? 'ปิด' : 'เปิด'}</button> <button className="btn btn-sm btn-danger" onClick={() => del(r.code)}>ลบ</button></td>
-          </tr>
-        ))}
-      </Table>
-    </>
-  );
-}
-
 function Settings() {
   const [s, setS] = useState(null);
   const [items, setItems] = useState([]);
@@ -637,7 +586,6 @@ const TABS = [
   ['keys', 'คีย์', Keys, 'key', 'คีย์อัตโนมัติ ตรวจสอบ ระงับ และรีเซ็ตเครื่อง', 'ร้านค้า'],
   ['reviews', 'รีวิว', Reviews, 'star', 'รีวิวจากลูกค้า ลบรีวิวที่ไม่เหมาะสม', 'ร้านค้า'],
   ['topups', 'เติมเงิน', Topups, 'wallet', 'ตรวจและอนุมัติรายการเติมเงิน', 'การเงิน'],
-  ['redeem', 'โค้ดเติมเงิน', RedeemCodes, 'ticket', 'สร้างโค้ดแจกเครดิตให้ลูกค้ากรอกเติมเงิน', 'การเงิน'],
   ['coupons', 'โค้ดส่วนลด', Coupons, 'ticket', 'สร้างโค้ดส่วนลดและกำหนดเงื่อนไข', 'การเงิน'],
   ['users', 'สมาชิก', Users, 'users', 'ปรับยอด ระงับ และตั้งสิทธิ์แอดมิน', 'ระบบ'],
   ['apikeys', 'API Key', ApiKeys, 'plug', 'คีย์สำหรับบอท Discord / ระบบภายนอก', 'ระบบ'],

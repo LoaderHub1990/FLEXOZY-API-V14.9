@@ -106,6 +106,26 @@ export default async function Home() {
         </section>
       )}
 
+      <section className="section why rv rv-up">
+        <h2 className="why-title">ทำไมต้องเลือก <span>{brand}</span></h2>
+        <div className="why-grid">
+          <div className="why-card">
+            <span className="why-ic"><Icon n="shield" size={22} /></span>
+            <div>
+              <h3>ปลอดภัย รวดเร็ว</h3>
+              <p>ใส่ใจในคุณภาพของสินค้าและบริการ ด้วยระบบรักษาความปลอดภัยที่ทันสมัย พร้อมการส่งสินค้าอัตโนมัติที่รวดเร็วและเชื่อถือได้</p>
+            </div>
+          </div>
+          <div className="why-card">
+            <span className="why-ic"><Icon n="headset" size={22} /></span>
+            <div>
+              <h3>บริการลูกค้า</h3>
+              <p>ทีมงานมืออาชีพพร้อมให้คำปรึกษาและแก้ไขปัญหา ด้วยใจที่ใส่ใจในทุกรายละเอียด เพื่อความพึงพอใจสูงสุดของลูกค้า</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Reviews reviews={reviews} stats={rstats} />
     </div>
   );

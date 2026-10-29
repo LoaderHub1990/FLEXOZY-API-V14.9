@@ -246,24 +246,3 @@ button.kpi{cursor:pointer}
 .fxbg-vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 45%,rgba(5,7,12,.55) 100%)}
 @media(max-width:767px){.fxbg-blob{filter:blur(60px)}.fxbg-blob.b1,.fxbg-blob.b2,.fxbg-blob.b3{width:360px;height:360px}.fxbg-dots b:nth-child(n+14){display:none}}
 @media (prefers-reduced-motion:reduce){.fxbg-blob,.fxbg-grid,.fxbg-dots b{animation:none!important}.fxbg-dots{display:none}}
-
-/* ---------- เติมเงิน: การ์ดช่องทาง + ฟอร์มเด้ง ---------- */
-.topup-rzx{max-width:860px}
-.topup-rzx-eyebrow{font-size:11px;letter-spacing:.16em;color:var(--subtle);font-weight:600;margin-bottom:4px}
-.topup-rzx-eyebrow span{display:none}
-.topup-rzx-card{background:rgba(255,255,255,.025);border-color:var(--border);min-height:120px}
-.topup-rzx-card:hover{background:rgba(var(--main-rgb),.08);border-color:var(--border-accent);transform:translateY(-2px)}
-.topup-rzx-arrow{align-self:flex-start;margin-top:2px;font-size:15px;color:var(--subtle)}
-.topup-rzx-card:hover .topup-rzx-arrow{color:#fff}
-.topup-rzx-note{margin-top:14px;font-size:12.5px;color:var(--muted);padding-left:12px;border-left:2px solid var(--border-strong)}
-.code-in{text-align:center;letter-spacing:.14em;font-weight:600;font-size:16px}
-.tp-ico.code{background:rgba(var(--main-rgb),.18)}
-.topup-rzx-form{max-width:none}
-
-/* ---------- แถบเมนูตอนเลื่อนลง: กลายเป็นแคปซูลลอย (แบบเดิม) ---------- */
-.header{transition:padding .35s var(--ease-out)}
-.nav-d{margin:0 auto;max-width:100%;transition:max-width .45s var(--ease-out),margin .45s var(--ease-out),border-radius .45s var(--ease-out),background .3s,box-shadow .3s,border-color .3s}
-html[data-scrolled="1"] .header{padding:12px 16px 0}
-html[data-scrolled="1"] .nav-d{max-width:1080px;margin:0 auto;border:1px solid var(--border-strong);border-radius:18px;background:rgba(10,14,24,.72);box-shadow:0 14px 44px -14px rgba(0,0,0,.75),0 0 0 1px rgba(var(--main-rgb),.12),0 0 38px -12px rgba(var(--main-rgb),.45)}
-html[data-scrolled="1"] .nav-in{padding:9px 16px}
-html[data-scrolled="1"] .nav-m{margin:0;border:1px solid var(--border-strong);border-radius:16px}
