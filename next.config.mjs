@@ -6,6 +6,7 @@ const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
+        { source: '/happybirthday/warisara', destination: '/happybirthday/warisara.html' },
         { source: '/api/v1/shop/hub/auth/:path*', destination: '/api/auth/:path*' },
         { source: '/api/v1/shop/hub/captcha/:path*', destination: '/api/captcha/:path*' },
       ],
