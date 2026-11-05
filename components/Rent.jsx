@@ -190,25 +190,6 @@ function RenewModal({ r, plans, balance, onClose, onDone }) {
   );
 }
 
-function Payments({ rentalId }) {
-  const t = useT();
-  const [rows, setRows] = useState(null);
-  useEffect(() => { api('/api/rent?payments=' + rentalId).then((d) => setRows(d.rows)).catch(() => setRows([])); }, [rentalId]);
-  if (!rows?.length) return rows ? <p className="subtle" style={{ fontSize: 12.5 }}>{t('ยังไม่มีรายการรับเงิน')}</p> : null;
-  const total = rows.filter((x) => x.status === 'paid').reduce((a, x) => a + Number(x.amount), 0);
-  return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      <b style={{ fontSize: 13 }}>{t('รับเงินแล้วรวม')} {baht(total)} ฿</b>
-      {rows.map((x) => (
-        <div key={x.id} className="mini-row" style={{ gridTemplateColumns: '1fr auto', fontSize: 13 }}>
-          <span>{x.item || '—'} · {x.buyer_name || '—'} {x.buyer_contact ? `(${x.buyer_contact})` : ''}<br /><span className="subtle">{fmtDate(x.created_at)}</span></span>
-          <b style={{ color: x.status === 'paid' ? 'var(--ok)' : 'var(--warn)' }}>{x.status === 'paid' ? '+' + baht(x.amount) + ' ฿' : x.status}</b>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function RentalCard({ r, root, onRenew, onSaved }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -234,7 +215,8 @@ function RentalCard({ r, root, onRenew, onSaved }) {
       </header>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
         <a className="btn btn-sm" href={r.url} target="_blank" rel="noopener noreferrer">{t('เปิดเว็บ')} <Icon n="ext" size={13} /></a>
-        <button className="btn btn-sm btn-primary" onClick={onRenew}>{t('ต่ออายุ')}</button>
+        <Link className="btn btn-sm btn-primary" href={`/rent/my/${r.id}`}>🛍 {t('จัดการร้าน')}</Link>
+        <button className="btn btn-sm" onClick={onRenew}>{t('ต่ออายุ')}</button>
         <button className="btn btn-sm" onClick={() => setOpen(!open)}>{open ? t('ซ่อน') : t('แก้ไขเว็บ')}</button>
       </div>
       {open && (
@@ -260,8 +242,7 @@ function RentalCard({ r, root, onRenew, onSaved }) {
             <b style={{ fontSize: 14 }}>🧧 {t('รับเงินด้วยซองอั่งเปา TrueMoney')}</b>
             <div><label className="label" style={{ marginTop: 0 }}>{t('เบอร์ TrueMoney Wallet ของคุณ (10 หลัก)')}</label>
               <input className="input" inputMode="numeric" maxLength={10} placeholder="0812345678" value={s.pay_phone || ''} onChange={(e) => up('pay_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
-            <p className="subtle" style={{ fontSize: 12.5 }}>{t('ใส่เบอร์แล้วหน้าเว็บจะมีช่อง “ชำระเงินด้วยซองอั่งเปา” ลูกค้าวางลิงก์ซอง ระบบรับซองเข้าเบอร์นี้ทันทีและแจ้งยอดให้ลูกค้าเห็น เงินเข้ากระเป๋าคุณโดยตรง ปล่อยว่างถ้าไม่ต้องการรับเงินผ่านหน้าเว็บ')}</p>
-            <Payments rentalId={r.id} />
+            <p className="subtle" style={{ fontSize: 12.5 }}>{t('ใส่เบอร์แล้วหน้าเว็บจะมีช่อง “ชำระเงินด้วยซองอั่งเปา” ลูกค้าวางลิงก์ซองเพื่อเติมเงินเข้าร้านคุณ ระบบรับซองเข้าเบอร์นี้ทันทีและเติมยอดให้ลูกค้าอัตโนมัติ เงินเข้ากระเป๋า TrueMoney ของคุณโดยตรง')}</p>
           </div>
           <div className="chips-in">
             <b style={{ fontSize: 14 }}>{t('ลิงก์ติดต่อ')}</b>
@@ -273,21 +254,6 @@ function RentalCard({ r, root, onRenew, onSaved }) {
               </div>
             ))}
             {s.links.length < 6 && <button type="button" className="btn btn-sm" style={{ justifySelf: 'start' }} onClick={() => up('links', [...s.links, { label: '', url: '' }])}>+ {t('เพิ่มลิงก์')}</button>}
-          </div>
-          <div className="chips-in">
-            <b style={{ fontSize: 14 }}>{t('รายการสินค้า / บริการ')}</b>
-            {s.items.map((it, i) => (
-              <div key={i} className="panel" style={{ padding: 14, display: 'grid', gap: 8 }}>
-                <div className="mini-row">
-                  <input className="input" placeholder={t('ชื่อ')} maxLength={60} value={it.name} onChange={(e) => upList('items', i, 'name', e.target.value)} />
-                  <input className="input" placeholder={t('ราคา (ข้อความ)')} maxLength={24} value={it.price} onChange={(e) => upList('items', i, 'price', e.target.value)} />
-                  <button type="button" className="btn btn-sm btn-danger" onClick={() => up('items', s.items.filter((_, n) => n !== i))}>{t('ลบ')}</button>
-                </div>
-                <input className="input" placeholder={t('รายละเอียด')} maxLength={200} value={it.desc} onChange={(e) => upList('items', i, 'desc', e.target.value)} />
-                <input className="input" placeholder="https://… (image)" value={it.image || ''} onChange={(e) => upList('items', i, 'image', e.target.value)} />
-              </div>
-            ))}
-            {s.items.length < 24 && <button type="button" className="btn btn-sm" style={{ justifySelf: 'start' }} onClick={() => up('items', [...s.items, { name: '', price: '', desc: '', image: '' }])}>+ {t('เพิ่มรายการ')}</button>}
           </div>
           {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
           <button className="btn btn-primary" disabled={busy}>{busy ? <span className="spin" /> : t('บันทึก')}</button>
