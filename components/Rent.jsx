@@ -209,6 +209,25 @@ function RenewModal({ r, plans, balance, onClose, onDone }) {
   );
 }
 
+function Payments({ rentalId }) {
+  const t = useT();
+  const [rows, setRows] = useState(null);
+  useEffect(() => { api('/api/rent?payments=' + rentalId).then((d) => setRows(d.rows)).catch(() => setRows([])); }, [rentalId]);
+  if (!rows?.length) return rows ? <p className="subtle" style={{ fontSize: 12.5 }}>{t('ยังไม่มีรายการรับเงิน')}</p> : null;
+  const total = rows.filter((x) => x.status === 'paid').reduce((a, x) => a + Number(x.amount), 0);
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <b style={{ fontSize: 13 }}>{t('รับเงินแล้วรวม')} {baht(total)} ฿</b>
+      {rows.map((x) => (
+        <div key={x.id} className="mini-row" style={{ gridTemplateColumns: '1fr auto', fontSize: 13 }}>
+          <span>{x.item || '—'} · {x.buyer_name || '—'} {x.buyer_contact ? `(${x.buyer_contact})` : ''}<br /><span className="subtle">{fmtDate(x.created_at)}</span></span>
+          <b style={{ color: x.status === 'paid' ? 'var(--ok)' : 'var(--warn)' }}>{x.status === 'paid' ? '+' + baht(x.amount) + ' ฿' : x.status}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RentalCard({ r, root, onRenew, onSaved }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -257,13 +276,11 @@ function RentalCard({ r, root, onRenew, onSaved }) {
               <select className="input" value={s.theme} onChange={(e) => up('theme', e.target.value)}><option value="dark">{t('มืด')}</option><option value="light">{t('สว่าง')}</option></select></div>
           </div>
           <div className="panel" style={{ padding: 14, display: 'grid', gap: 10 }}>
-            <b style={{ fontSize: 14 }}>{t('รับเงินด้วยเบอร์ (PromptPay / TrueMoney)')}</b>
-            <div className="row2">
-              <div><label className="label" style={{ marginTop: 0 }}>{t('เบอร์รับเงิน (10 หลัก)')}</label><input className="input" inputMode="numeric" maxLength={12} placeholder="0812345678" value={s.pay_phone || ''} onChange={(e) => up('pay_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
-              <div><label className="label" style={{ marginTop: 0 }}>{t('ชื่อบัญชี')}</label><input className="input" maxLength={40} value={s.pay_name || ''} onChange={(e) => up('pay_name', e.target.value)} /></div>
-            </div>
-            <input className="input" maxLength={120} placeholder={t('หมายเหตุ (ไม่บังคับ) เช่น โอนแล้วแจ้งสลิปทาง LINE')} value={s.pay_note || ''} onChange={(e) => up('pay_note', e.target.value)} />
-            <p className="subtle" style={{ fontSize: 12.5 }}>{t('เงินเข้าบัญชีของคุณโดยตรง ระบบนี้ไม่ได้ถือเงินและไม่ตรวจสอบการโอน — ลูกค้าสแกน QR ที่หน้าเว็บ และราคาที่เป็นตัวเลขจะมีปุ่ม “จ่ายด้วย QR” ตามยอดให้อัตโนมัติ')}</p>
+            <b style={{ fontSize: 14 }}>🧧 {t('รับเงินด้วยซองอั่งเปา TrueMoney')}</b>
+            <div><label className="label" style={{ marginTop: 0 }}>{t('เบอร์ TrueMoney Wallet ของคุณ (10 หลัก)')}</label>
+              <input className="input" inputMode="numeric" maxLength={10} placeholder="0812345678" value={s.pay_phone || ''} onChange={(e) => up('pay_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
+            <p className="subtle" style={{ fontSize: 12.5 }}>{t('ใส่เบอร์แล้วหน้าเว็บจะมีช่อง “ชำระเงินด้วยซองอั่งเปา” ลูกค้าวางลิงก์ซอง ระบบรับซองเข้าเบอร์นี้ทันทีและแจ้งยอดให้ลูกค้าเห็น เงินเข้ากระเป๋าคุณโดยตรง ปล่อยว่างถ้าไม่ต้องการรับเงินผ่านหน้าเว็บ')}</p>
+            <Payments rentalId={r.id} />
           </div>
           <div className="chips-in">
             <b style={{ fontSize: 14 }}>{t('ลิงก์ติดต่อ')}</b>

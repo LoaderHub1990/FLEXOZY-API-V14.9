@@ -3,11 +3,8 @@ import { rentalBySub, rentalState, ROOT_DOMAIN } from '@/lib/rent';
 import { getPrefs } from '@/lib/lang';
 import { makeT } from '@/lib/i18n';
 import { TEMPLATES, getTemplate, demoSite } from '@/lib/templates';
-import QRCode from 'qrcode';
-import { promptPayPayload, validPhone, fmtPhone, priceNumber } from '@/lib/promptpay';
-import CopyBtn from '@/components/CopyBtn';
-
-const qrSvg = (payload) => QRCode.toString(payload, { type: 'svg', margin: 2, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
+import { validPhone, maskPhone } from '@/lib/phone';
+import TenantPay, { PayPick } from '@/components/TenantPay';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,9 +49,10 @@ export default async function Tenant({ params, searchParams }) {
     );
   }
   const title = s.title || r.sub;
-  const payOn = validPhone(s.pay_phone);
-  const payQr = payOn ? await qrSvg(promptPayPayload(s.pay_phone)) : '';
-  const itemQr = payOn ? await Promise.all((s.items || []).map(async (it) => { const n = priceNumber(it.price); return n ? { n, svg: await qrSvg(promptPayPayload(s.pay_phone, n)) } : null; })) : [];
+  const payOn = !demo && validPhone(s.pay_phone);
+  const L = { title: t('ชำระเงินด้วยซองอั่งเปา TrueMoney'), sub: t('เงินเข้าเบอร์ผู้ขายทันที'), s1: t('1. สร้างซองอั่งเปาใน TrueMoney Wallet (จำนวน 1 คน)'), s2: t('2. ใส่ยอดตามราคาสินค้า แล้วคัดลอกลิงก์ซอง'), s3: t('3. วางลิงก์ด้านล่างแล้วกดยืนยัน'),
+    item: t('เลือกสินค้า (ไม่บังคับ)'), name: t('ชื่อของคุณ (ไม่บังคับ)'), contact: t('ช่องทางติดต่อกลับ เช่น LINE / Discord'), submit: t('ยืนยันการชำระเงิน'), wait: t('กำลังตรวจสอบซอง…'),
+    done: t('ได้รับเงินแล้ว'), doneNote: t('แจ้งเจ้าของเว็บเพื่อรับสินค้า/บริการ'), again: t('จ่ายเพิ่ม') };
   return (
     <div className="tn" data-theme={theme} data-tpl={tpl} style={style}>
       <i className="tn-glow" aria-hidden="true" /><i className="tn-deco" aria-hidden="true" />
@@ -80,31 +78,14 @@ export default async function Tenant({ params, searchParams }) {
                   <h3>{it.name}</h3>
                   {it.desc && <p>{it.desc}</p>}
                   {it.price && <div className="tn-price">{it.price}</div>}
-                  {itemQr[i] && (
-                    <details className="tn-qr-d">
-                      <summary>{t('จ่ายด้วย QR')}</summary>
-                      <div className="tn-qr-box"><div className="tn-qr" dangerouslySetInnerHTML={{ __html: itemQr[i].svg }} /><b>฿{itemQr[i].n.toLocaleString('th-TH')}</b><small>{s.pay_name || fmtPhone(s.pay_phone)}</small></div>
-                    </details>
-                  )}
+                  {payOn && <PayPick name={it.name} label={t('จ่ายด้วยซอง')} />}
                 </div>
               </article>
             ))}
           </section>
         )}
       </main>
-      {payOn && (
-        <section className="tn-pay" id="pay">
-          <div className="tn-qr" dangerouslySetInnerHTML={{ __html: payQr }} />
-          <div className="tn-pay-i">
-            <h2>{t('ช่องทางชำระเงิน')}</h2>
-            <p className="tn-pay-m">PromptPay / TrueMoney</p>
-            <div className="tn-pay-n">{fmtPhone(s.pay_phone)} <CopyBtn text={s.pay_phone} label={t('คัดลอกเบอร์')} done={t('คัดลอกแล้ว')} /></div>
-            {s.pay_name && <p className="tn-pay-m">{t('ชื่อบัญชี')}: {s.pay_name}</p>}
-            {s.pay_note && <p className="tn-pay-m">{s.pay_note}</p>}
-            <small>{t('สแกนด้วยแอปธนาคาร/ทรูมันนี่ แล้วแจ้งโอนกับเจ้าของเว็บ')}</small>
-          </div>
-        </section>
-      )}
+      {payOn && <TenantPay sub={r.sub} items={(s.items || []).map((x) => x.name)} masked={maskPhone(s.pay_phone)} L={L} />}
       {demo && !embed && (
         <div className="tn-demo" role="navigation">
           <span>{t('นี่คือเว็บตัวอย่าง')}</span>

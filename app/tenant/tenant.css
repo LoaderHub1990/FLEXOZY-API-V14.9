@@ -138,26 +138,29 @@ body.tenant-body{font-family:'Noto Sans Thai','Inter',system-ui,sans-serif;-webk
 @media (prefers-reduced-motion:reduce){.tn[data-tpl="pop"] .tn-card{transform:none!important}}
 
 
-/* ---------- รับเงินด้วยเบอร์ (PromptPay / TrueMoney) ---------- */
-.tn-pay{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;max-width:720px;margin:0 auto 50px;padding:22px;border-radius:24px;border:1px solid var(--bd);background:var(--sf)}
-.tn-qr{width:176px;height:176px;flex:none;padding:8px;border-radius:16px;background:#fff;line-height:0}
-.tn-qr svg{width:100%;height:100%;display:block}
-.tn-pay-i{display:grid;gap:6px;min-width:200px;text-align:left}
-.tn-pay-i h2{font-size:20px}
-.tn-pay-m{color:var(--mu);font-size:14px}
-.tn-pay-n{font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--ac)}
-.tn-pay-i small{color:var(--mu);font-size:12.5px;margin-top:4px}
-.tn-copy{font:inherit;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--bd);background:transparent;color:var(--tx);cursor:pointer;transition:background .2s,border-color .2s}
-.tn-copy:hover{border-color:var(--ac);background:rgba(var(--ac-rgb),.14)}
-.tn-qr-d{margin-top:8px}
-.tn-qr-d summary{list-style:none;cursor:pointer;display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid var(--ac);color:var(--ac);font-size:13px;font-weight:700;transition:background .2s,color .2s}
-.tn-qr-d summary::-webkit-details-marker{display:none}
-.tn-qr-d summary:hover,.tn-qr-d[open] summary{background:var(--ac);color:var(--on-ac)}
-.tn-qr-box{display:grid;justify-items:center;gap:4px;margin-top:12px;animation:tnUp .35s cubic-bezier(.16,1,.3,1) both}
-.tn-qr-box .tn-qr{width:164px;height:164px}
-.tn-qr-box b{font-size:20px}.tn-qr-box small{color:var(--mu)}
-.tn[data-tpl="minimal"] .tn-qr-d{grid-column:1/-1}
+/* ---------- ชำระเงินด้วยซองอั่งเปา TrueMoney ---------- */
+.tn-pay{position:relative;z-index:1;max-width:640px;margin:0 auto 50px;padding:22px;border-radius:24px;border:1px solid var(--bd);background:var(--sf);display:grid;gap:16px;scroll-margin-top:20px}
+.tn-pay-h{display:flex;align-items:center;gap:14px}
+.tn-pay-ic{display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:14px;font-size:24px;background:rgba(var(--ac-rgb),.16);border:1px solid var(--bd)}
+.tn-pay-h h2{font-size:clamp(17px,3vw,21px)}
+.tn-pay-h p{color:var(--mu);font-size:13.5px;margin-top:2px}
+.tn-pay-f{display:grid;gap:10px}
+.tn-pay-s{list-style:none;display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:rgba(var(--ac-rgb),.08);color:var(--mu);font-size:13.5px;line-height:1.5}
+.tn-pay-2{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+@media(max-width:520px){.tn-pay-2{grid-template-columns:1fr}}
+.tn-pay input,.tn-pay select{width:100%;font:inherit;font-size:14.5px;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:transparent;color:var(--tx);outline:none;transition:border-color .2s,box-shadow .2s}
+.tn-pay select option{color:#111}
+.tn-pay input:focus,.tn-pay select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(var(--ac-rgb),.2)}
+.tn-pay .tn-btn{font:inherit;font-weight:700;cursor:pointer;color:var(--tx)}
+.tn-pay .tn-btn.pri{color:var(--on-ac)}
+.tn-pay .tn-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.tn-pay-e{padding:10px 14px;border-radius:12px;background:rgba(239,68,68,.12);color:#ef4444;font-size:13.5px}
+.tn-pay-ok{display:grid;justify-items:center;gap:6px;padding:10px 0;text-align:center;animation:tnUp .4s cubic-bezier(.16,1,.3,1) both}
+.tn-pay-ok b{font-size:18px;color:#22c55e}.tn-pay-ok span{font-size:34px;font-weight:800;color:var(--ac)}.tn-pay-ok small{color:var(--mu)}
+.tn-pay-ok .tn-btn{margin-top:8px}
+.tn-qr-d-btn{justify-self:start;margin-top:6px;font:inherit;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px;border:1px solid var(--ac);background:transparent;color:var(--ac);cursor:pointer;transition:background .2s,color .2s}
+.tn-qr-d-btn:hover{background:var(--ac);color:var(--on-ac)}
+.tn[data-tpl="minimal"] .tn-qr-d-btn{grid-column:1}
 .tn[data-tpl="pop"] .tn-pay{border:3px solid var(--bd);box-shadow:6px 6px 0 var(--bd)}
 .tn[data-tpl="luxe"] .tn-pay,.tn[data-tpl="neon"] .tn-pay{border-radius:4px}
 .tn[data-tpl="glass"] .tn-pay{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-@media(max-width:520px){.tn-pay{flex-direction:column;text-align:center}.tn-pay-i{text-align:center;justify-items:center}}

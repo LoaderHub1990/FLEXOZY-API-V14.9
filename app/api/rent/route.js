@@ -14,6 +14,14 @@ const view = (r) => ({
 
 export const GET = route(async (req) => {
   const sp = new URL(req.url).searchParams;
+  if (sp.has('payments')) {
+    const user = await requireUser();
+    const rid = int(sp.get('payments'), { min: 1, name: 'เว็บ' });
+    const own = await one('SELECT id FROM rentals WHERE id=$1 AND user_id=$2', [rid, user.id]);
+    if (!own) throw new HttpError(404, 'ไม่พบเว็บนี้');
+    const { rows } = await q('SELECT id,amount,status,item,buyer_name,buyer_contact,created_at FROM tenant_payments WHERE rental_id=$1 ORDER BY id DESC LIMIT 50', [rid]);
+    return json({ rows: rows.map((x) => ({ ...x, amount: Number(x.amount) })) });
+  }
   // ตรวจว่าชื่อเว็บว่างไหม (สาธารณะ)
   if (sp.has('check')) {
     lightLimit('chk:' + (await clientIp()), 40, 60000);
