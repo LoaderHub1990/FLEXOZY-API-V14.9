@@ -6,8 +6,10 @@ import { api, baht } from './api';
 import { useShell, Modal } from './Shell';
 import Icon from './Icons';
 import { fmtDuration, startText } from '@/lib/duration';
+import { useT } from './Prefs';
 
 export default function BuyBox({ product: p, loggedIn, balance }) {
+  const t = useT();
   const router = useRouter();
   const { openAuth } = useShell();
   const [qty, setQty] = useState(1);
@@ -55,62 +57,62 @@ export default function BuyBox({ product: p, loggedIn, balance }) {
       <div className="meta">
         {p.unlimited ? (
           <>
-            <span className="chip">คีย์อัตโนมัติ · ส่งทันที</span>
+            <span className="chip">{t(t('คีย์อัตโนมัติ · ส่งทันที'))}</span>
             <span className="chip">อายุ {fmtDuration(p.key_seconds)}</span>
-            <span className="chip">คงเหลือ ไม่จำกัด</span>
+            <span className="chip">{t(t('คงเหลือ ไม่จำกัด'))}</span>
           </>
         ) : <span className="chip">คงเหลือ {p.stock}</span>}
         {p.sold > 0 && <span className="chip">ขายแล้ว {p.sold}</span>}
       </div>
       {p.unlimited && (
         <p className="subtle" style={{ fontSize: 12.5, margin: '10px 0 0' }}>
-          {Number(p.key_seconds) > 0 ? startText(p.key_start) : 'คีย์ใช้ได้ตลอดชีพ'}{p.key_hwid ? ' · ผูกกับ 1 เครื่อง' : ''} · ระบบสุ่มคีย์ให้ทันทีหลังชำระเงิน
+          {Number(p.key_seconds) > 0 ? startText(p.key_start) : t('คีย์ใช้ได้ตลอดชีพ')}{p.key_hwid ? ' · ผูกกับ 1 เครื่อง' : ''} · ระบบสุ่มคีย์ให้ทันทีหลังชำระเงิน
         </p>
       )}
       <div className="row" style={{ alignItems: 'baseline' }}>
-        <span className="muted">ราคา</span>
+        <span className="muted">{t(t('ราคา'))}</span>
         <span className="price" style={{ fontSize: 30 }}>{baht(p.price)}<small>฿</small></span>
       </div>
 
-      <label className="label">จำนวน</label>
+      <label className="label">{t(t('จำนวน'))}</label>
       <div className="qty">
-        <button type="button" onClick={() => setQ(qty - 1)} aria-label="ลด">−</button>
-        <input value={qty} inputMode="numeric" onChange={(e) => setQ(e.target.value)} aria-label="จำนวน" />
-        <button type="button" onClick={() => setQ(qty + 1)} aria-label="เพิ่ม">+</button>
+        <button type="button" onClick={() => setQ(qty - 1)} aria-label={t('ลด')}>−</button>
+        <input value={qty} inputMode="numeric" onChange={(e) => setQ(e.target.value)} aria-label={t('จำนวน')} />
+        <button type="button" onClick={() => setQ(qty + 1)} aria-label={t('เพิ่ม')}>+</button>
       </div>
 
-      <label className="label">โค้ดส่วนลด (ถ้ามี)</label>
+      <label className="label">{t(t('โค้ดส่วนลด (ถ้ามี)'))}</label>
       <div style={{ display: 'flex', gap: 8 }}>
         <input className="input" value={code} onChange={(e) => { setCode(e.target.value); setDisc(null); setCmsg(''); }} placeholder="CODE" />
-        <button type="button" className="btn" onClick={applyCoupon}>ใช้โค้ด</button>
+        <button type="button" className="btn" onClick={applyCoupon}>{t(t('ใช้โค้ด'))}</button>
       </div>
       {cmsg && <div className={'msg ' + (cmsg[0] === '!' ? 'err' : 'ok')}>{cmsg.replace(/^!/, '')}</div>}
 
       <div className="total">
-        <span className="muted">ราคารวม</span>
+        <span className="muted">{t(t('ราคารวม'))}</span>
         <b>{baht(total)} ฿</b>
       </div>
       {err && <div className="msg err" style={{ marginTop: 0, marginBottom: 12 }}>{err}</div>}
 
       {out ? (
-        <button className="btn" style={{ width: '100%' }} disabled>สินค้าหมด</button>
+        <button className="btn" style={{ width: '100%' }} disabled>{t(t('สินค้าหมด'))}</button>
       ) : loggedIn ? (
         short ? (
-          <Link href="/account?tab=topup" className="btn btn-primary" style={{ width: '100%' }}>ยอดเงินไม่พอ — เติมเงิน (มี {baht(balance)} ฿)</Link>
+          <Link href="/account?tab=topup" className="btn btn-primary" style={{ width: '100%' }}>{t('ยอดเงินไม่พอ — เติมเงิน')} ({baht(balance)} ฿)</Link>
         ) : (
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setErr(''); setConfirm(true); }} disabled={busy}>ซื้อเลย</button>
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { setErr(''); setConfirm(true); }} disabled={busy}>{t(t('ซื้อเลย'))}</button>
         )
       ) : (
         <>
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => openAuth('login')}>เข้าสู่ระบบเพื่อสั่งซื้อ</button>
-          <div className="note">เข้าสู่ระบบก่อนเพื่อสั่งซื้อ</div>
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => openAuth('login')}>{t(t('เข้าสู่ระบบเพื่อสั่งซื้อ'))}</button>
+          <div className="note">{t('เข้าสู่ระบบก่อนเพื่อสั่งซื้อ')}</div>
         </>
       )}
 
       {confirm && (
         <Modal onClose={() => !busy && setConfirm(false)}>
-          <h3>ยืนยันการสั่งซื้อ</h3>
-          <p className="muted" style={{ fontSize: 14, margin: '4px 0 14px' }}>ตรวจสอบรายการก่อนกดยืนยัน เมื่อสั่งซื้อแล้วระบบจะหักเงินและส่งสินค้าทันที</p>
+          <h3>{t(t('ยืนยันการสั่งซื้อ'))}</h3>
+          <p className="muted" style={{ fontSize: 14, margin: '4px 0 14px' }}>{t('ตรวจสอบรายการก่อนกดยืนยัน เมื่อสั่งซื้อแล้วระบบจะหักเงินและส่งสินค้าทันที')}</p>
           <div className="cf-item">
             <div className="cf-img">{p.image ? <img src={p.image} alt="" /> : <Icon n="box" size={24} />}</div>
             <div style={{ minWidth: 0 }}>
@@ -119,30 +121,30 @@ export default function BuyBox({ product: p, loggedIn, balance }) {
             </div>
           </div>
           <div className="cf-rows">
-            <div><span>ราคาสินค้า</span><b>{baht(sub)} ฿</b></div>
+            <div><span>{t(t('ราคาสินค้า'))}</span><b>{baht(sub)} ฿</b></div>
             {disc && <div><span>ส่วนลด ({disc.code})</span><b style={{ color: '#86efac' }}>−{baht(disc.discount)} ฿</b></div>}
-            <div className="cf-total"><span>ยอดที่ต้องชำระ</span><b>{baht(total)} ฿</b></div>
-            <div><span>ยอดคงเหลือปัจจุบัน</span><b>{baht(balance)} ฿</b></div>
-            <div><span>คงเหลือหลังสั่งซื้อ</span><b>{baht(Math.max(0, balance - total))} ฿</b></div>
+            <div className="cf-total"><span>{t(t('ยอดที่ต้องชำระ'))}</span><b>{baht(total)} ฿</b></div>
+            <div><span>{t(t('ยอดคงเหลือปัจจุบัน'))}</span><b>{baht(balance)} ฿</b></div>
+            <div><span>{t(t('คงเหลือหลังสั่งซื้อ'))}</span><b>{baht(Math.max(0, balance - total))} ฿</b></div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-            <button className="btn" style={{ flex: 1 }} onClick={() => setConfirm(false)} disabled={busy}>ยกเลิก</button>
-            <button className="btn btn-primary" style={{ flex: 1.4 }} onClick={buy} disabled={busy}>{busy ? <span className="spin" /> : 'ยืนยันการสั่งซื้อ'}</button>
+            <button className="btn" style={{ flex: 1 }} onClick={() => setConfirm(false)} disabled={busy}>{t(t('ยกเลิก'))}</button>
+            <button className="btn btn-primary" style={{ flex: 1.4 }} onClick={buy} disabled={busy}>{busy ? <span className="spin" /> : t('ยืนยันการสั่งซื้อ')}</button>
           </div>
         </Modal>
       )}
 
       {done && (
         <Modal onClose={() => setDone(null)}>
-          <h3>สั่งซื้อสำเร็จ 🎉</h3>
+          <h3>{t('สั่งซื้อสำเร็จ 🎉')}</h3>
           <p className="muted" style={{ fontSize: 14, margin: '4px 0 14px' }}>ออเดอร์ #{done.orderId} · ยอดคงเหลือ {baht(done.balance)} ฿ · ข้อมูลนี้เก็บไว้ที่ “ประวัติการสั่งซื้อ” ด้วย</p>
           {done.note && <p className="subtle" style={{ fontSize: 13, margin: '0 0 10px' }}>{done.note}</p>}
           <div className="codebox">{done.items.join('\n')}</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => { try { await navigator.clipboard.writeText(done.items.join('\n')); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }}>
-              <Icon n={copied ? 'check' : 'copy'} size={16} /> {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
+              <Icon n={copied ? 'check' : 'copy'} size={16} /> {copied ? t('คัดลอกแล้ว') : t('คัดลอก')}
             </button>
-            <Link href="/account?tab=orders" className="btn" style={{ flex: 1 }}>ดูประวัติ</Link>
+            <Link href="/account?tab=orders" className="btn" style={{ flex: 1 }}>{t(t('ดูประวัติ'))}</Link>
           </div>
         </Modal>
       )}

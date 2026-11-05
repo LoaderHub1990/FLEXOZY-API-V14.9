@@ -381,6 +381,42 @@ async function handle(req, { params }) {
     }
   }
 
+  // ---------- เช่าเว็บ ----------
+  if (res === 'rentplans') {
+    const planBody = async () => {
+      const b = await body(req);
+      const price = Math.round(Number(b.price) * 100);
+      if (!Number.isFinite(price) || price < 0 || price > 100_000_00) throw new HttpError(400, 'ราคาไม่ถูกต้อง');
+      return [str(b.name, { min: 1, max: 40, name: 'ชื่อแพ็กเกจ' }), int(b.days, { min: 1, max: 3660, name: 'จำนวนวัน' }), price, str(b.description, { max: 200 }), b.active !== false, int(b.sort ?? 0, { min: 0, max: 9999, name: 'ลำดับ' })];
+    };
+    if (m === 'GET') return json({ rows: (await q('SELECT id,name,days,price,description,active,sort FROM rent_plans ORDER BY sort,id')).rows });
+    if (m === 'POST') { await q('INSERT INTO rent_plans(name,days,price,description,active,sort) VALUES($1,$2,$3,$4,$5,$6)', await planBody()); return json({ ok: true }); }
+    if (m === 'PUT') { await q('UPDATE rent_plans SET name=$1,days=$2,price=$3,description=$4,active=$5,sort=$6 WHERE id=$7', [...(await planBody()), nid()]); return json({ ok: true }); }
+    if (m === 'DELETE') { await q('DELETE FROM rent_plans WHERE id=$1', [nid()]); return json({ ok: true }); }
+  }
+  if (res === 'rentals') {
+    if (m === 'GET') {
+      const term = (new URL(req.url).searchParams.get('q') || '').trim().slice(0, 60);
+      const like = `%${term.replace(/[%_\\]/g, '\\$&')}%`;
+      const { rows } = await q(
+        `SELECT r.id,r.sub,r.plan_name,r.status,r.expires_at,r.created_at,u.username,
+                (SELECT coalesce(sum(total),0)::bigint FROM rent_orders o WHERE o.rental_id=r.id) AS paid
+           FROM rentals r JOIN users u ON u.id=r.user_id
+          WHERE ($1='' OR r.sub ILIKE $2 OR u.username ILIKE $2) ORDER BY r.id DESC LIMIT 200`, [term, like]);
+      return json({ rows });
+    }
+    if (m === 'PUT') {
+      const b = await body(req); const rid = nid();
+      if (b.extend_days != null) {
+        const d = int(b.extend_days, { min: -3660, max: 3660, name: 'จำนวนวัน' });
+        await q(`UPDATE rentals SET expires_at = greatest(expires_at, CASE WHEN $1 > 0 THEN now() ELSE expires_at END) + ($1 || ' days')::interval WHERE id=$2`, [String(d), rid]);
+      }
+      if (b.status === 'active' || b.status === 'suspended') await q('UPDATE rentals SET status=$1 WHERE id=$2', [b.status, rid]);
+      return json({ ok: true });
+    }
+    if (m === 'DELETE') { await q('DELETE FROM rentals WHERE id=$1', [nid()]); return json({ ok: true }); }
+  }
+
   // ---------- settings ----------
   if (res === 'settings') {
     if (m === 'GET') return json({ settings: await getSettings() });
@@ -392,6 +428,11 @@ async function handle(req, { params }) {
         footer_text: str(b.footer_text, { max: 200 }),
         announce_text: str(b.announce_text, { max: 300 }),
         banner_image: safeImage(b.banner_image),
+        banner_title: str(b.banner_title, { max: 60, name: 'หัวข้อแบนเนอร์' }),
+        banner_subtitle: str(b.banner_subtitle, { max: 200, name: 'ข้อความรองแบนเนอร์' }),
+        banner_title_en: str(b.banner_title_en, { max: 60, name: 'หัวข้อแบนเนอร์ (EN)' }),
+        banner_subtitle_en: str(b.banner_subtitle_en, { max: 200, name: 'ข้อความรองแบนเนอร์ (EN)' }),
+        tagline_en: str(b.tagline_en, { max: 200 }),
         discord_url: safeUrl(b.discord_url),
         logo: safeImage(b.logo),
         meta_title: str(b.meta_title, { max: 70, name: 'ชื่อพรีวิวลิงก์' }),

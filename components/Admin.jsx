@@ -13,7 +13,7 @@ function useList(path) {
   const [err, setErr] = useState('');
   const load = useCallback(() => api(A(path)).then((r) => { setRows(r.rows); setErr(''); }).catch((e) => setErr(e.message)), [path]);
   useEffect(() => { load(); }, [load]);
-  return { rows, err, load };
+  return { rows, err, load, setRows };
 }
 const Err = ({ m }) => (m ? <div className="msg err">{m}</div> : null);
 const Table = ({ head, children }) => (
@@ -548,7 +548,7 @@ function Settings() {
   return (
     <form className="panel" style={{ maxWidth: 640 }} onSubmit={save}>
       <h3>ตั้งค่าร้าน</h3>
-      {[['shop_name', 'ชื่อร้าน'], ['tagline', 'คำโปรยหน้าแรก'], ['footer_text', 'ข้อความท้ายเว็บ'], ['announce_text', 'ข้อความแถบประกาศหน้าแรก (วิ่งใต้สถิติ)'], ['banner_image', 'ลิงก์แบนเนอร์ใหญ่หน้าแรก (รองรับ GIF/WebP เคลื่อนไหว เช่น /banner.webp)'], ['discord_url', 'ลิงก์ Discord (https://...) ใช้กับปุ่ม “ติดต่อเรา”'], ['discord_widget_id', 'Discord Server ID สำหรับวิดเจ็ตท้ายเว็บ (ว่าง = ไม่แสดงวิดเจ็ต)'], ['logo', 'ลิงก์โลโก้ (/uploads/... หรือ https://...)'], ['min_topup', 'ยอดเติมเงินขั้นต่ำ (บาท)', 'number']].map(F)}
+      {[['shop_name', 'ชื่อร้าน'], ['tagline', 'คำโปรยหน้าแรก'], ['footer_text', 'ข้อความท้ายเว็บ'], ['announce_text', 'ข้อความแถบประกาศหน้าแรก (วิ่งใต้สถิติ)'], ['banner_title', 'แบนเนอร์หน้าแรก: ข้อความใหญ่ (ว่าง = ใช้ชื่อร้าน)'], ['banner_subtitle', 'แบนเนอร์หน้าแรก: ข้อความรอง (ว่าง = ใช้คำโปรย)'], ['banner_title_en', 'Banner title (English)'], ['banner_subtitle_en', 'Banner subtitle (English)'], ['tagline_en', 'Tagline (English)'], ['banner_image', 'ลิงก์รูปแบนเนอร์ (ไม่บังคับ — เว้นว่าง = แสดงเป็นข้อความตามด้านบน)'], ['discord_url', 'ลิงก์ Discord (https://...) ใช้กับปุ่ม “ติดต่อเรา”'], ['discord_widget_id', 'Discord Server ID สำหรับวิดเจ็ตท้ายเว็บ (ว่าง = ไม่แสดงวิดเจ็ต)'], ['logo', 'ลิงก์โลโก้ (/uploads/... หรือ https://...)'], ['min_topup', 'ยอดเติมเงินขั้นต่ำ (บาท)', 'number']].map(F)}
       <h3 style={{ marginTop: 28 }}>พรีวิวตอนวางลิงก์ (Discord / Facebook / LINE)</h3>
       <div className="subtle" style={{ fontSize: 12.5, marginTop: 4 }}>รูป + ชื่อ + คำอธิบายที่จะขึ้นเมื่อมีคนวางลิงก์เว็บ — ถ้าเคยวางลิงก์ไปแล้ว แพลตฟอร์มอาจแคชของเก่าไว้สักพัก</div>
       {[['meta_title', 'ชื่อที่แสดง (เช่น Flexozy Hub)'], ['meta_description', 'ข้อความอธิบาย'], ['og_image', 'ลิงก์รูปพรีวิว (/og.jpg หรือ https://...) ขนาดแนะนำ 1200×630']].map(F)}
@@ -583,6 +583,56 @@ function Settings() {
       {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
       <button className="btn btn-primary" style={{ width: '100%', marginTop: 20 }}>บันทึก</button>
     </form>
+  );
+}
+
+function RentAdmin() {
+  const plans = useList('rentplans');
+  const rentals = useList('rentals');
+  const [f, setF] = useState({ name: '', days: 30, price: 30, description: '' });
+  const [e2, setE2] = useState('');
+  const [term, setTerm] = useState('');
+  async function addPlan(e) { e.preventDefault(); setE2(''); try { await api(A('rentplans'), 'POST', f); setF({ name: '', days: 30, price: 30, description: '' }); plans.load(); } catch (x) { setE2(x.message); } }
+  async function togglePlan(p) { await api(A('rentplans/' + p.id), 'PUT', { ...p, price: p.price / 100, active: !p.active }); plans.load(); }
+  async function delPlan(p) { if (confirm(`ลบแพ็กเกจ “${p.name}” ? (เว็บที่เช่าไปแล้วไม่หาย)`)) { await api(A('rentplans/' + p.id), 'DELETE'); plans.load(); } }
+  async function act(r, body) { await api(A('rentals/' + r.id), 'PUT', body); rentals.load(); }
+  async function del(r) { if (confirm(`ลบเว็บ ${r.sub} ถาวร ?`)) { await api(A('rentals/' + r.id), 'DELETE'); rentals.load(); } }
+  const search = (e) => { e.preventDefault(); api(A('rentals?q=' + encodeURIComponent(term))).then((r) => rentals.setRows?.(r.rows)).catch(() => {}); };
+  const stat = (r) => (r.status === 'suspended' ? ['warn', 'ระงับ'] : new Date(r.expires_at) > new Date() ? ['ok', 'ใช้งานอยู่'] : ['bad', 'หมดอายุ']);
+  return (
+    <>
+      <h3 style={{ marginBottom: 12 }}>แพ็กเกจเช่าเว็บ</h3>
+      <form className="panel" onSubmit={addPlan} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+          <div><label className="label" style={{ marginTop: 0 }}>ชื่อแพ็กเกจ</label><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="1 เดือน" required /></div>
+          <div><label className="label" style={{ marginTop: 0 }}>จำนวนวัน</label><input className="input" type="number" min="1" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} required /></div>
+          <div><label className="label" style={{ marginTop: 0 }}>ราคา (บาท)</label><input className="input" type="number" min="0" step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} required /></div>
+          <div><label className="label" style={{ marginTop: 0 }}>คำอธิบาย</label><input className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+        </div>
+        <Err m={e2} /><button className="btn btn-primary" style={{ marginTop: 14 }}>+ เพิ่มแพ็กเกจ</button>
+      </form>
+      <Err m={plans.err} />
+      <Table head={['ชื่อ', 'วัน', 'ราคา', 'สถานะ', '']}>
+        {(plans.rows || []).map((p) => (
+          <tr key={p.id}><td><b>{p.name}</b><div className="subtle" style={{ fontSize: 12 }}>{p.description}</div></td><td>{p.days}</td><td>{baht(p.price)} ฿</td>
+            <td><span className={'tag ' + (p.active ? 'ok' : '')}>{p.active ? 'เปิดขาย' : 'ปิด'}</span></td>
+            <td style={{ whiteSpace: 'nowrap' }}><button className="btn btn-sm" onClick={() => togglePlan(p)}>{p.active ? 'ปิดขาย' : 'เปิดขาย'}</button> <button className="btn btn-sm btn-danger" onClick={() => delPlan(p)}>ลบ</button></td></tr>
+        ))}
+      </Table>
+
+      <div className="row" style={{ margin: '28px 0 12px' }}><h3>เว็บที่ลูกค้าเช่า</h3>
+        <form onSubmit={search} style={{ display: 'flex', gap: 8 }}><input className="input" style={{ width: 200 }} placeholder="ค้นหาชื่อเว็บ / ผู้ใช้" value={term} onChange={(e) => setTerm(e.target.value)} /><button className="btn btn-sm">ค้นหา</button></form></div>
+      <Err m={rentals.err} />
+      <Table head={['เว็บ', 'ผู้เช่า', 'แพ็กเกจ', 'หมดอายุ', 'จ่ายแล้ว', 'สถานะ', '']}>
+        {(rentals.rows || []).map((r) => { const [c, l] = stat(r); return (
+          <tr key={r.id}><td><b>{r.sub}</b></td><td>{r.username}</td><td>{r.plan_name}</td><td className="subtle">{fmtDate(r.expires_at)}</td><td>{baht(r.paid)} ฿</td>
+            <td><span className={'tag ' + c}>{l}</span></td>
+            <td style={{ whiteSpace: 'nowrap' }}>
+              <button className="btn btn-sm" onClick={() => act(r, { extend_days: 30 })}>+30 วัน</button>{' '}
+              <button className="btn btn-sm" onClick={() => act(r, { status: r.status === 'suspended' ? 'active' : 'suspended' })}>{r.status === 'suspended' ? 'ปลดระงับ' : 'ระงับ'}</button>{' '}
+              <button className="btn btn-sm btn-danger" onClick={() => del(r)}>ลบ</button></td></tr>); })}
+      </Table>
+    </>
   );
 }
 
@@ -639,6 +689,7 @@ const TABS = [
   ['topups', 'เติมเงิน', Topups, 'wallet', 'ตรวจและอนุมัติรายการเติมเงิน', 'การเงิน'],
   ['redeem', 'โค้ดเติมเงิน', RedeemCodes, 'ticket', 'สร้างโค้ดแจกเครดิตให้ลูกค้ากรอกเติมเงิน', 'การเงิน'],
   ['coupons', 'โค้ดส่วนลด', Coupons, 'ticket', 'สร้างโค้ดส่วนลดและกำหนดเงื่อนไข', 'การเงิน'],
+  ['rent', 'เช่าเว็บ', RentAdmin, 'server', 'แพ็กเกจ ราคา และเว็บที่ลูกค้าเช่า', 'ร้านค้า'],
   ['users', 'สมาชิก', Users, 'users', 'ปรับยอด ระงับ และตั้งสิทธิ์แอดมิน', 'ระบบ'],
   ['apikeys', 'API Key', ApiKeys, 'plug', 'คีย์สำหรับบอท Discord / ระบบภายนอก', 'ระบบ'],
   ['settings', 'ตั้งค่า', Settings, 'cog', 'ชื่อร้าน แบนเนอร์ ประกาศ และช่องทางเติมเงิน', 'ระบบ'],

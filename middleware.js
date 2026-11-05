@@ -11,6 +11,9 @@ const SITE = (process.env.SITE_URL || 'https://flexozy.site').replace(/\/+$/, ''
 // โดเมนเก่า (shop.flexozy.site) — ถ้ายังชี้มาที่โปรเจกต์นี้ จะเด้งไปโดเมนหลักให้อัตโนมัติ ตั้ง HUB_HOST= (ว่าง) เพื่อปิด
 const LEGACY_HOST = (process.env.HUB_HOST ?? 'shop.flexozy.site').trim().toLowerCase();
 const BASE = '/shop';
+// เว็บที่ลูกค้าเช่า: <ชื่อ>.<ROOT_DOMAIN> → หน้า /tenant/<ชื่อ> (ต้องตั้ง Wildcard domain *.โดเมน ที่ Vercel)
+const ROOT = (process.env.ROOT_DOMAIN || new URL(SITE).hostname).toLowerCase().replace(/^www\./, '');
+const SUB_RE = /^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/;
 
 export function middleware(req) {
   const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(':')[0].toLowerCase();
@@ -23,6 +26,31 @@ export function middleware(req) {
     if (!seg.length) return redirect(`${BASE}/login`);
     if (seg[0] === 'dashboard') return redirect(`${BASE}/dashboard`);
     return redirect(pathname);
+  }
+
+  // เว็บเช่า (โดเมนย่อย) — ไม่แตะ /api /_next /uploads
+  if (host.endsWith('.' + ROOT) && seg[0] !== 'api' && seg[0] !== '_next' && seg[0] !== 'uploads') {
+    const sub = host.slice(0, -(ROOT.length + 1));
+    if (SUB_RE.test(sub) && !RESERVED_SLUGS.has(sub) && sub !== 'www') {
+      const h = new Headers(req.headers);
+      h.set('x-tenant', '1');
+      const url = req.nextUrl.clone();
+      url.pathname = `/tenant/${sub}`;
+      return NextResponse.rewrite(url, { request: { headers: h } });
+    }
+  }
+  // ตัวอย่างเว็บเช่าบนโดเมนหลัก: /site/<ชื่อ> (ใช้ดูได้ก่อน DNS พร้อม) · ห้ามเข้า /tenant ตรงๆ
+  if (seg[0] === 'site' && seg.length === 2 && SUB_RE.test(seg[1].toLowerCase())) {
+    const h = new Headers(req.headers);
+    h.set('x-tenant', '1');
+    const url = req.nextUrl.clone();
+    url.pathname = `/tenant/${seg[1].toLowerCase()}`;
+    return NextResponse.rewrite(url, { request: { headers: h } });
+  }
+  if (seg[0] === 'tenant') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/__not_found__';
+    return NextResponse.rewrite(url);
   }
 
   // เส้นทางภายในเก่า /hub/... → ลิงก์ใหม่

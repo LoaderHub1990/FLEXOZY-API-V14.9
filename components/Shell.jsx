@@ -9,6 +9,7 @@ import { CookieBanner, AnnouncementPopup, DiscordWidget } from './Extras';
 import { perfAllowed } from './consent';
 import Captcha from './Captcha';
 import { Avatar, ProfileCard } from './Avatar';
+import { Prefs, useT } from './Prefs';
 
 // แดชบอร์ดเจ้าของร้าน (Hub) อยู่โดเมนเดียวกัน — middleware rewrite ไป app/hub/dashboard
 const DASH = '/shop/dashboard';
@@ -17,6 +18,7 @@ const Ctx = createContext(null);
 export const useShell = () => useContext(Ctx);
 
 function Modal({ onClose, children, wide }) {
+  const t = useT();
   // วาดผ่าน portal ไปที่ <body> — ถ้าไม่ทำ โมดัลที่เปิดจากในหน้า (เช่นหลังบ้าน) จะติดอยู่ใน <main>
   // ซึ่งมี z-index:1 ทำให้ footer และวิดเจ็ต Discord ทับโมดัลได้
   const [mounted, setMounted] = useState(false);
@@ -32,7 +34,7 @@ function Modal({ onClose, children, wide }) {
   return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={'modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" style={{ position: 'relative' }}>
-        <button className="btn btn-sm x" onClick={onClose} aria-label="ปิด"><Icon n="x" size={16} /></button>
+        <button className="btn btn-sm x" onClick={onClose} aria-label={t('ปิด')}><Icon n="x" size={16} /></button>
         {children}
       </div>
     </div>,
@@ -43,6 +45,7 @@ export { Modal };
 
 function AuthModal({ mode: m0, onClose, discordLogin }) {
   const router = useRouter();
+  const t = useT();
   const [mode, setMode] = useState(m0);
   const [f, setF] = useState({ username: '', email: '', password: '' });
   const [err, setErr] = useState('');
@@ -69,42 +72,42 @@ function AuthModal({ mode: m0, onClose, discordLogin }) {
   const noTok = !cap;
   return (
     <Modal onClose={onClose}>
-      <h3>{mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</h3>
+      <h3>{mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')}</h3>
       <p className="muted" style={{ fontSize: 14, marginBottom: 16 }}>
-        {mode === 'login' ? 'ยินดีต้อนรับกลับมา' : 'สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน'}
+        {mode === 'login' ? t('ยินดีต้อนรับกลับมา') : t('สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน')}
       </p>
       <div className="tabs">
-        <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setErr(''); }}>เข้าสู่ระบบ</button>
-        <button type="button" className={mode === 'register' ? 'on' : ''} onClick={() => { setMode('register'); setErr(''); }}>สมัครสมาชิก</button>
+        <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setErr(''); }}>{t('เข้าสู่ระบบ')}</button>
+        <button type="button" className={mode === 'register' ? 'on' : ''} onClick={() => { setMode('register'); setErr(''); }}>{t('สมัครสมาชิก')}</button>
       </div>
       <Captcha onToken={setCap} rerun={rerun} />
       <fieldset className={'gate' + (locked ? ' locked' : '')} disabled={locked}>
         {discordLogin && (
           <>
             <a className="btn btn-discord" href={noTok ? undefined : `/api/auth/discord?cap=${encodeURIComponent(cap)}`} aria-disabled={noTok} onClick={(e) => noTok && e.preventDefault()}>
-              <Icon n="discord" size={20} /> {mode === 'login' ? 'เข้าสู่ระบบด้วย Discord' : 'สมัครด้วย Discord'}
+              <Icon n="discord" size={20} /> {mode === 'login' ? t('เข้าสู่ระบบด้วย Discord') : t('สมัครด้วย Discord')}
             </a>
-            <div className="or-sep"><span>หรือ</span></div>
+            <div className="or-sep"><span>{t('หรือ')}</span></div>
           </>
         )}
         <form onSubmit={submit}>
           <div className="field">
-            <label className="label" style={{ marginTop: 0 }}>{mode === 'login' ? 'ชื่อผู้ใช้หรืออีเมล' : 'ชื่อผู้ใช้'}</label>
+            <label className="label" style={{ marginTop: 0 }}>{mode === 'login' ? t('ชื่อผู้ใช้หรืออีเมล') : t('ชื่อผู้ใช้')}</label>
             <input className="input" autoComplete="username" value={f.username} onChange={set('username')} placeholder={mode === 'login' ? 'username / email' : 'a-z 0-9 _ . (3-20 ตัว)'} required />
           </div>
           {mode === 'register' && (
             <div className="field">
-              <label className="label" style={{ marginTop: 0 }}>อีเมล</label>
+              <label className="label" style={{ marginTop: 0 }}>{t('อีเมล')}</label>
               <input className="input" type="email" autoComplete="email" value={f.email} onChange={set('email')} placeholder="you@example.com" required />
             </div>
           )}
           <div className="field">
-            <label className="label" style={{ marginTop: 0 }}>รหัสผ่าน</label>
-            <input className="input" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={f.password} onChange={set('password')} placeholder={mode === 'register' ? 'อย่างน้อย 8 ตัวอักษร' : '••••••••'} required />
+            <label className="label" style={{ marginTop: 0 }}>{t('รหัสผ่าน')}</label>
+            <input className="input" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={f.password} onChange={set('password')} placeholder={mode === 'register' ? t('อย่างน้อย 8 ตัวอักษร') : '••••••••'} required />
           </div>
           {err && <div className="msg err">{err}</div>}
           <button className="btn btn-primary" style={{ width: '100%', marginTop: 18 }} disabled={busy || noTok}>
-            {busy || (ready && noTok) ? <span className="spin" /> : mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
+            {busy || (ready && noTok) ? <span className="spin" /> : mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')}
           </button>
         </form>
       </fieldset>
@@ -113,19 +116,20 @@ function AuthModal({ mode: m0, onClose, discordLogin }) {
 }
 
 function DiscordProfileModal({ onClose, user, discordLogin }) {
+  const t = useT();
   const p = user.profile;
   const d = p?.discord;
   return (
     <Modal onClose={onClose}>
-      <h3 style={{ marginBottom: 14 }}>โปรไฟล์ของฉัน</h3>
+      <h3 style={{ marginBottom: 14 }}>{t('โปรไฟล์ของฉัน')}</h3>
       <ProfileCard p={p} />
       <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
         {d ? (
-          <a className="btn btn-discord" style={{ marginTop: 0 }} href={d.profileUrl} target="_blank" rel="noopener noreferrer"><Icon n="discord" size={18} /> เปิดโปรไฟล์ใน Discord <Icon n="ext" size={14} /></a>
+          <a className="btn btn-discord" style={{ marginTop: 0 }} href={d.profileUrl} target="_blank" rel="noopener noreferrer"><Icon n="discord" size={18} /> {t('เปิดโปรไฟล์ใน Discord')} <Icon n="ext" size={14} /></a>
         ) : discordLogin ? (
-          <a className="btn btn-discord" style={{ marginTop: 0 }} href="/api/auth/discord?mode=link"><Icon n="discord" size={18} /> ผูกบัญชี Discord เพื่อดึงกรอบ/แบนเนอร์</a>
+          <a className="btn btn-discord" style={{ marginTop: 0 }} href="/api/auth/discord?mode=link"><Icon n="discord" size={18} /> {t('ผูกบัญชี Discord เพื่อดึงกรอบ/แบนเนอร์')}</a>
         ) : null}
-        <Link href="/account?tab=profile" className="btn btn-primary" onClick={onClose}>ตั้งค่าโปรไฟล์ (เปลี่ยนชื่อ / รูป / แบนเนอร์)</Link>
+        <Link href="/account?tab=profile" className="btn btn-primary" onClick={onClose}>{t('ตั้งค่าโปรไฟล์ (เปลี่ยนชื่อ / รูป / แบนเนอร์)')}</Link>
       </div>
     </Modal>
   );
@@ -137,14 +141,15 @@ function Toast({ text, onDone }) {
 }
 
 function ContactModal({ onClose, discord }) {
+  const t = useT();
   return (
     <Modal onClose={onClose}>
-      <h3>ติดต่อเรา</h3>
-      <p className="muted" style={{ margin: '6px 0 18px', fontSize: 14 }}>มีปัญหาการสั่งซื้อหรืออยากสอบถามสินค้า ทักมาได้ที่ Discord ของร้าน</p>
+      <h3>{t('ติดต่อเรา')}</h3>
+      <p className="muted" style={{ margin: '6px 0 18px', fontSize: 14 }}>{t('มีปัญหาการสั่งซื้อหรืออยากสอบถามสินค้า ทักมาได้ที่ Discord ของร้าน')}</p>
       {discord ? (
-        <a className="btn btn-primary" style={{ width: '100%' }} href={discord} target="_blank" rel="noopener noreferrer">เข้า Discord ร้านค้า</a>
+        <a className="btn btn-primary" style={{ width: '100%' }} href={discord} target="_blank" rel="noopener noreferrer">{t('เข้า Discord ร้านค้า')}</a>
       ) : (
-        <div className="msg err">ร้านยังไม่ได้ตั้งค่าช่องทางติดต่อ</div>
+        <div className="msg err">{t('ร้านยังไม่ได้ตั้งค่าช่องทางติดต่อ')}</div>
       )}
     </Modal>
   );
@@ -152,6 +157,7 @@ function ContactModal({ onClose, discord }) {
 
 function SearchModal({ onClose }) {
   const router = useRouter();
+  const t = useT();
   const [term, setTerm] = useState('');
   const [res, setRes] = useState({ products: [], categories: [] });
   const [sel, setSel] = useState(0);
@@ -170,7 +176,7 @@ function SearchModal({ onClose }) {
     return () => clearTimeout(t);
   }, [term]);
   const list = [
-    ...res.categories.map((c) => ({ href: `/store?category=${c.id}`, title: c.name, sub: 'หมวดหมู่' })),
+    ...res.categories.map((c) => ({ href: `/store?category=${c.id}`, title: c.name, sub: t('หมวดหมู่') })),
     ...res.products.map((p) => ({ href: `/store/${p.id}`, title: p.name, sub: `${baht(p.price)} ฿ · ${p.category || ''}`, img: p.image })),
   ];
   const go = (it) => { onClose(); router.push(it.href); };
@@ -182,10 +188,10 @@ function SearchModal({ onClose }) {
   return (
     <Modal onClose={onClose} wide>
       <div style={{ paddingRight: 40 }}>
-        <input className="input" autoFocus placeholder="ค้นหาสินค้าหรือหมวดหมู่" value={term} onChange={(e) => setTerm(e.target.value)} onKeyDown={key} />
+        <input className="input" autoFocus placeholder={t('ค้นหาสินค้าหรือหมวดหมู่')} value={term} onChange={(e) => setTerm(e.target.value)} onKeyDown={key} />
       </div>
       <div style={{ marginTop: 12, maxHeight: '50vh', overflowY: 'auto' }}>
-        {list.length === 0 && <div className="muted" style={{ padding: 20, textAlign: 'center' }}>ไม่พบสิ่งที่ค้นหา</div>}
+        {list.length === 0 && <div className="muted" style={{ padding: 20, textAlign: 'center' }}>{t('ไม่พบสิ่งที่ค้นหา')}</div>}
         {list.map((it, i) => (
           <button key={it.href} className={'sr' + (i === sel ? ' sel' : '')} style={{ width: '100%', textAlign: 'left' }} onClick={() => go(it)} onMouseEnter={() => setSel(i)}>
             {it.img ? <img src={it.img} alt="" /> : <span className="stat-ic" style={{ width: 44, height: 44 }}><Icon n="layers" size={20} /></span>}
@@ -202,6 +208,7 @@ function popupItems(s) {
 }
 
 export default function Shell({ user, settings, discordLogin, adminPath = 'admin', children }) {
+  const t = useT();
   const path = usePathname();
   const router = useRouter();
   const [modal, setModal] = useState(null);
@@ -240,13 +247,14 @@ export default function Shell({ user, settings, discordLogin, adminPath = 'admin
       </button>
       {menu && (
         <div className="menu-pop" role="menu">
-          <button onClick={() => open('profile')}>โปรไฟล์ของฉัน</button>
-          <Link href="/account?tab=profile">ตั้งค่าโปรไฟล์</Link>
-          <Link href="/account">บัญชีของฉัน / เติมเงิน</Link>
-          <Link href="/account?tab=orders">ประวัติการสั่งซื้อ</Link>
-          <a href={DASH}>แดชบอร์ดร้านค้า (Hub)</a>
-          {user.role === 'admin' && <Link href={`/${adminPath}`}>จัดการหลังบ้าน</Link>}
-          <button onClick={logout}>ออกจากระบบ</button>
+          <button onClick={() => open('profile')}>{t('โปรไฟล์ของฉัน')}</button>
+          <Link href="/account?tab=profile">{t('ตั้งค่าโปรไฟล์')}</Link>
+          <Link href="/account">{t('บัญชีของฉัน / เติมเงิน')}</Link>
+          <Link href="/rent/my">{t('เว็บที่เช่าไว้')}</Link>
+          <Link href="/account?tab=orders">{t('ประวัติการสั่งซื้อ')}</Link>
+          <a href={DASH}>{t('แดชบอร์ดร้านค้า (Hub)')}</a>
+          {user.role === 'admin' && <Link href={`/${adminPath}`}>{t('จัดการหลังบ้าน')}</Link>}
+          <button onClick={logout}>{t('ออกจากระบบ')}</button>
         </div>
       )}
     </div>
@@ -255,23 +263,25 @@ export default function Shell({ user, settings, discordLogin, adminPath = 'admin
   return (
     <Ctx.Provider value={{ user, settings, openAuth: (m) => open('auth:' + m), openSearch: () => open('search'), openContact: () => open('contact'), openCookies: () => setCookieOpen(true) }}>
       <header className="header">
-        <nav className="nav-d" aria-label="เมนูหลัก">
+        <nav className="nav-d" aria-label={t('เมนูหลัก')}>
           <div className="nav-in">
             <Link href="/" className="brand"><img src={settings.logo} alt="" /><span>{settings.shop_name}</span></Link>
             <div className="nav-links">
-              <Link href="/" className={'nav-link' + (path === '/' ? ' active' : '')}>หน้าหลัก</Link>
-              <Link href="/store" className={'nav-link' + (act('/store') ? ' active' : '')}>หมวดหมู่สินค้า</Link>
-              <Link href="/account?tab=topup" className={'nav-link' + (act('/account') ? ' active' : '')}>เติมเงิน</Link>
+              <Link href="/" className={'nav-link' + (path === '/' ? ' active' : '')}>{t('หน้าหลัก')}</Link>
+              <Link href="/store" className={'nav-link' + (act('/store') ? ' active' : '')}>{t('หมวดหมู่สินค้า')}</Link>
+              <Link href="/rent" className={'nav-link' + (act('/rent') ? ' active' : '')}>{t('เช่าเว็บ')}</Link>
+              <Link href="/account?tab=topup" className={'nav-link' + (act('/account') ? ' active' : '')}>{t('เติมเงิน')}</Link>
               {/* หน้า Hub ใช้โครงหน้าของตัวเอง → ต้องเป็นลิงก์ธรรมดา (โหลดหน้าใหม่) ไม่ใช้ next/link */}
-              <a href={DASH} className="nav-link nav-dash"><Icon n="dash" size={15} /> แดชบอร์ด</a>
-              <button className="nav-link" onClick={() => open('contact')}>ติดต่อเรา</button>
+              <a href={DASH} className="nav-link nav-dash"><Icon n="dash" size={15} /> {t('แดชบอร์ด')}</a>
+              <button className="nav-link" onClick={() => open('contact')}>{t('ติดต่อเรา')}</button>
             </div>
             <div className="nav-right">
-              <button className="icon-btn" onClick={() => open('search')} aria-label="ค้นหา (Ctrl+K)" title="ค้นหา (Ctrl+K)"><Icon n="search" size={17} /></button>
+              <Prefs />
+              <button className="icon-btn" onClick={() => open('search')} aria-label={t('ค้นหา (Ctrl+K)')} title={t('ค้นหา (Ctrl+K)')}><Icon n="search" size={17} /></button>
               {user ? <UserMenu /> : (
                 <>
-                  <button className="btn" onClick={() => open('auth:register')}>สมัครสมาชิก</button>
-                  <button className="btn btn-white" onClick={() => open('auth:login')}><Icon n="arrow" size={15} /> เข้าสู่ระบบ</button>
+                  <button className="btn" onClick={() => open('auth:register')}>{t('สมัครสมาชิก')}</button>
+                  <button className="btn btn-white" onClick={() => open('auth:login')}><Icon n="arrow" size={15} /> {t('เข้าสู่ระบบ')}</button>
                 </>
               )}
             </div>
@@ -280,21 +290,22 @@ export default function Shell({ user, settings, discordLogin, adminPath = 'admin
         <div className="nav-m" style={{ position: 'relative' }}>
           <Link href="/" className="brand"><img src={settings.logo} alt="" /><span>{settings.shop_name}</span></Link>
           <div className="nav-right">
-            <button className="icon-btn" onClick={() => open('search')} aria-label="ค้นหา"><Icon n="search" size={17} /></button>
-            {user ? <UserMenu /> : <button className="btn btn-sm btn-white" onClick={() => open('auth:login')}>เข้าสู่ระบบ</button>}
+            <Prefs small />
+            <button className="icon-btn" onClick={() => open('search')} aria-label={t('ค้นหา')}><Icon n="search" size={17} /></button>
+            {user ? <UserMenu /> : <button className="btn btn-sm btn-white" onClick={() => open('auth:login')}>{t('เข้าสู่ระบบ')}</button>}
           </div>
         </div>
       </header>
 
-      <nav className="tabbar" aria-label="เมนูมือถือ">
-        <Link href="/" className={'tab' + (path === '/' ? ' active' : '')}><Icon n="home" />หน้าหลัก</Link>
-        <Link href="/store" className={'tab' + (act('/store') ? ' active' : '')}><Icon n="store" />ร้านค้า</Link>
-        <Link href="/account?tab=topup" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="wallet" />เติมเงิน</Link>
-        <a href={DASH} className="tab"><Icon n="dash" />แดชบอร์ด</a>
+      <nav className="tabbar" aria-label={t('เมนูมือถือ')}>
+        <Link href="/" className={'tab' + (path === '/' ? ' active' : '')}><Icon n="home" />{t('หน้าหลัก')}</Link>
+        <Link href="/store" className={'tab' + (act('/store') ? ' active' : '')}><Icon n="store" />{t('ร้านค้า')}</Link>
+        <Link href="/rent" className={'tab' + (act('/rent') ? ' active' : '')}><Icon n="server" />{t('เช่าเว็บ')}</Link>
+        <Link href="/account?tab=topup" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="wallet" />{t('เติมเงิน')}</Link>
         {user ? (
-          <Link href="/account" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="user" />บัญชี</Link>
+          <Link href="/account" className={'tab' + (act('/account') ? ' active' : '')}><Icon n="user" />{t('บัญชี')}</Link>
         ) : (
-          <button className="tab" onClick={() => open('auth:register')}><Icon n="user" />สมัคร</button>
+          <button className="tab" onClick={() => open('auth:register')}><Icon n="user" />{t('สมัคร')}</button>
         )}
       </nav>
 
@@ -306,18 +317,19 @@ export default function Shell({ user, settings, discordLogin, adminPath = 'admin
             <div>
               <Link href="/" className="brand" style={{ marginBottom: 16 }}><img src={settings.logo} alt="" /><span style={{ fontSize: 18 }}>{settings.shop_name}</span></Link>
               <p className="muted" style={{ marginBottom: 18 }}>{settings.footer_text}</p>
-              <button className="btn" onClick={() => open('contact')}>ติดต่อเรา</button>
+              <button className="btn" onClick={() => open('contact')}>{t('ติดต่อเรา')}</button>
             </div>
             <div>
-              <div className="eyebrow">เมนู</div>
-              <Link className="fl" href="/">หน้าหลัก</Link>
-              <Link className="fl" href="/store">ร้านค้า</Link>
-              <Link className="fl" href="/account?tab=topup">เติมเงิน</Link>
-              <a className="fl" href={DASH}>แดชบอร์ด</a>
-              <Link className="fl" href="/privacy">นโยบายความเป็นส่วนตัว</Link>
+              <div className="eyebrow">{t('เมนู')}</div>
+              <Link className="fl" href="/">{t('หน้าหลัก')}</Link>
+              <Link className="fl" href="/store">{t('ร้านค้า')}</Link>
+              <Link className="fl" href="/rent">{t('เช่าเว็บ')}</Link>
+              <Link className="fl" href="/account?tab=topup">{t('เติมเงิน')}</Link>
+              <a className="fl" href={DASH}>{t('แดชบอร์ด')}</a>
+              <Link className="fl" href="/privacy">{t('นโยบายความเป็นส่วนตัว')}</Link>
             </div>
             <div>
-              <div className="eyebrow">ชุมชน Discord</div>
+              <div className="eyebrow">{t('ชุมชน Discord')}</div>
               {settings.discord_url ? <DiscordWidget inviteUrl={settings.discord_url} /> : <span className="subtle">-</span>}
             </div>
           </div>

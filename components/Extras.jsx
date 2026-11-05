@@ -1,10 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Modal } from './Shell';
+import { useT } from './Prefs';
 import { readConsent, saveConsent } from './consent';
 
 /* ---------- แบนเนอร์/ตั้งค่าคุกกี้ ---------- */
 export function CookieBanner({ forceOpen, onClose }) {
+  const t = useT();
   const [show, setShow] = useState(false);
   const [detail, setDetail] = useState(false);
   const [perf, setPerf] = useState(false);
@@ -18,21 +20,21 @@ export function CookieBanner({ forceOpen, onClose }) {
   if (!show) return null;
 
   return (
-    <div className="cookie" role="dialog" aria-label="การตั้งค่าคุกกี้">
+    <div className="cookie" role="dialog" aria-label={t('การตั้งค่าคุกกี้')}>
       <div className="cookie-txt">
-        <b>เว็บไซต์นี้ใช้คุกกี้</b>
+        <b>{t('เว็บไซต์นี้ใช้คุกกี้')}</b>
         <p>
-          เราใช้คุกกี้ที่จำเป็นต่อการเข้าสู่ระบบและความปลอดภัย และมีคุกกี้เพื่อความเร็วเว็บไซต์ให้คุณเลือกได้
-          เราไม่มีคุกกี้โฆษณาและไม่ติดตามพฤติกรรมข้ามเว็บไซต์ <a href="/privacy">อ่านนโยบายความเป็นส่วนตัว</a>
+          {t('เราใช้คุกกี้ที่จำเป็นต่อการเข้าสู่ระบบและความปลอดภัย และมีคุกกี้เพื่อความเร็วเว็บไซต์ให้คุณเลือกได้')}
+          {t('เราไม่มีคุกกี้โฆษณาและไม่ติดตามพฤติกรรมข้ามเว็บไซต์')} <a href="/privacy">{t('อ่านนโยบายความเป็นส่วนตัว')}</a>
         </p>
         {detail && (
           <div className="cookie-opts">
             <label className="cookie-opt">
-              <span><b>คุกกี้ที่จำเป็น</b><small>เข้าสู่ระบบ ป้องกันคำขอปลอม และจำตัวเลือกคุกกี้ — ปิดไม่ได้</small></span>
+              <span><b>{t('คุกกี้ที่จำเป็น')}</b><small>{t('เข้าสู่ระบบ ป้องกันคำขอปลอม และจำตัวเลือกคุกกี้ — ปิดไม่ได้')}</small></span>
               <input type="checkbox" checked disabled />
             </label>
             <label className="cookie-opt">
-              <span><b>ประสิทธิภาพ</b><small>จำข้อมูลหน้าเว็บไว้ชั่วคราวในแท็บ ให้เปิดหน้าถัดไปเร็วขึ้น (หายเมื่อปิดแท็บ)</small></span>
+              <span><b>{t('ประสิทธิภาพ')}</b><small>{t('จำข้อมูลหน้าเว็บไว้ชั่วคราวในแท็บ ให้เปิดหน้าถัดไปเร็วขึ้น (หายเมื่อปิดแท็บ)')}</small></span>
               <input type="checkbox" checked={perf} onChange={(e) => setPerf(e.target.checked)} />
             </label>
           </div>
@@ -40,12 +42,12 @@ export function CookieBanner({ forceOpen, onClose }) {
       </div>
       <div className="cookie-act">
         {detail ? (
-          <button className="btn btn-primary" onClick={() => done(perf)}>บันทึกการตั้งค่า</button>
+          <button className="btn btn-primary" onClick={() => done(perf)}>{t(t('บันทึกการตั้งค่า'))}</button>
         ) : (
           <>
-            <button className="btn btn-primary" onClick={() => done(true)}>ยอมรับทั้งหมด</button>
-            <button className="btn" onClick={() => done(false)}>เฉพาะที่จำเป็น</button>
-            <button className="btn" onClick={() => { setPerf(false); setDetail(true); }}>ตั้งค่า</button>
+            <button className="btn btn-primary" onClick={() => done(true)}>{t(t('ยอมรับทั้งหมด'))}</button>
+            <button className="btn" onClick={() => done(false)}>{t(t('เฉพาะที่จำเป็น'))}</button>
+            <button className="btn" onClick={() => { setPerf(false); setDetail(true); }}>{t(t('ตั้งค่า'))}</button>
           </>
         )}
       </div>
@@ -55,6 +57,7 @@ export function CookieBanner({ forceOpen, onClose }) {
 
 /* ---------- ป๊อปอัปประกาศร้าน ---------- */
 export function AnnouncementPopup({ enabled, items, version }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -74,15 +77,15 @@ export function AnnouncementPopup({ enabled, items, version }) {
   return (
     <Modal onClose={close} wide>
       {it.image && <img src={it.image} alt="" className="pop-img" />}
-      <div className="eyebrow" style={{ marginBottom: 6 }}>ประกาศจากร้าน{items.length > 1 ? ` · ${i + 1}/${items.length}` : ''}</div>
+      <div className="eyebrow" style={{ marginBottom: 6 }}>{t('ประกาศจากร้าน')}{items.length > 1 ? ` · ${i + 1}/${items.length}` : ''}</div>
       <h3 style={{ paddingRight: 36 }}>{it.title}</h3>
       {it.body && <div className="desc" style={{ marginTop: 10 }}>{it.body}</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
-        {it.link && <a className="btn btn-primary" href={it.link} target="_blank" rel="noopener noreferrer" style={{ flex: 1 }}>{it.button || 'ดูรายละเอียด'}</a>}
+        {it.link && <a className="btn btn-primary" href={it.link} target="_blank" rel="noopener noreferrer" style={{ flex: 1 }}>{it.button || t('ดูรายละเอียด')}</a>}
         {!last ? (
-          <button className="btn" style={{ flex: 1 }} onClick={() => setI(i + 1)}>ถัดไป</button>
+          <button className="btn" style={{ flex: 1 }} onClick={() => setI(i + 1)}>{t(t('ถัดไป'))}</button>
         ) : (
-          <button className={'btn' + (it.link ? '' : ' btn-primary')} style={{ flex: 1 }} onClick={close}>ปิด</button>
+          <button className={'btn' + (it.link ? '' : ' btn-primary')} style={{ flex: 1 }} onClick={close}>{t(t('ปิด'))}</button>
         )}
       </div>
     </Modal>
@@ -96,6 +99,7 @@ const inviteCode = (url) => {
 };
 
 export function DiscordWidget({ inviteUrl }) {
+  const t = useT();
   const code = inviteCode(inviteUrl);
   const [info, setInfo] = useState(null);
   useEffect(() => {
@@ -115,12 +119,12 @@ export function DiscordWidget({ inviteUrl }) {
         <div style={{ minWidth: 0 }}>
           <div className="dcard-name">{info?.name || 'Discord'}</div>
           <div className="dcard-stat">
-            <span><i className="dot on" />{n(info?.online)} ออนไลน์</span>
-            <span><i className="dot" />{n(info?.members)} คน</span>
+            <span><i className="dot on" />{n(info?.online)} {t('ออนไลน์')}</span>
+            <span><i className="dot" />{n(info?.members)} {t('คน')}</span>
           </div>
         </div>
       </div>
-      <a className="btn btn-primary" style={{ width: '100%' }} href={inviteUrl} target="_blank" rel="noopener noreferrer">เข้าร่วม Discord</a>
+      <a className="btn btn-primary" style={{ width: '100%' }} href={inviteUrl} target="_blank" rel="noopener noreferrer">{t(t('เข้าร่วม Discord'))}</a>
     </div>
   );
 }

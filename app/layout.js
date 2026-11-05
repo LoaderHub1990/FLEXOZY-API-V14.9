@@ -8,6 +8,8 @@ import Effects from '@/components/Effects';
 import { ADMIN_PATH } from '@/lib/adminPath';
 import Backdrop from '@/components/Backdrop';
 import { discordConfigured, publicDiscord, publicProfile } from '@/lib/discord';
+import { PrefsProvider } from '@/components/Prefs';
+import { getPrefs } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +37,23 @@ export async function generateMetadata() {
 const earlyScript = `document.documentElement.classList.add('js');setTimeout(function(){if(document.documentElement.dataset.ready!=='1')document.documentElement.classList.add('rv-fb')},6000);`;
 
 export default async function RootLayout({ children }) {
+  const hdr = await headers();
+  // เว็บที่ลูกค้าเช่า (ชื่อ.โดเมน หรือ /site/ชื่อ) — โครงหน้าเปล่า ใช้ธีมของตัวเอง
+  if (hdr.get('x-tenant') === '1') {
+    return (
+      <html lang="th" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body className="tenant-body">{children}</body>
+      </html>
+    );
+  }
   // หน้า Hub (/shop/* และ /<ชื่อร้าน>) ใช้โครงหน้าของตัวเอง ไม่มีเมนู/Shell ของร้านหลัก
-  if ((await headers()).get('x-hub') === '1') {
+  if (hdr.get('x-hub') === '1') {
     return (
       <html lang="th" suppressHydrationWarning>
         <head>
@@ -50,16 +67,16 @@ export default async function RootLayout({ children }) {
       </html>
     );
   }
-  const [user, settings] = await Promise.all([getUser(), getSettings()]);
+  const [user, settings, prefs] = await Promise.all([getUser(), getSettings(), getPrefs()]);
   const u = user && { id: user.id, username: user.username, role: user.role, balance: user.balance, discord: publicDiscord(user), profile: publicProfile(user) };
   return (
-    <html lang="th" suppressHydrationWarning>
+    <html lang={prefs.lang} data-theme={prefs.theme} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#05070c" />
+        <meta name="theme-color" content={prefs.theme === 'light' ? '#fafafa' : '#000000'} />
         <script dangerouslySetInnerHTML={{ __html: earlyScript }} />
       </head>
       <body>
@@ -69,7 +86,7 @@ export default async function RootLayout({ children }) {
             <div className="boot-logo">
               <span className="boot-glow" />
               <span className="boot-ring" />
-              {settings.logo ? <img src={settings.logo} alt="" /> : null}
+              {settings.logo ? <img src={settings.logo} alt="" width="84" height="84" /> : null}
             </div>
             <div className="boot-name">{settings.shop_name}</div>
             <div className="boot-bar"><i /></div>
@@ -78,8 +95,10 @@ export default async function RootLayout({ children }) {
         {/* แสงสปอตไลต์เฉียงด้านหลัง (โทนเดียวกับต้นฉบับ) */}
         <div className="spot" aria-hidden="true"><i /><i /><i /></div>
         <Backdrop />
-        <Effects />
-        <Shell user={u} settings={settings} discordLogin={discordConfigured()} adminPath={u?.role === 'admin' ? ADMIN_PATH : undefined}>{children}</Shell>
+        <PrefsProvider initialLang={prefs.lang} initialTheme={prefs.theme}>
+          <Effects />
+          <Shell user={u} settings={settings} discordLogin={discordConfigured()} adminPath={u?.role === 'admin' ? ADMIN_PATH : undefined}>{children}</Shell>
+        </PrefsProvider>
       </body>
     </html>
   );

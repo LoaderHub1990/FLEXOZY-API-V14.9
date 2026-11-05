@@ -75,7 +75,7 @@ function RouteBar() {
 }
 
 /* ---------- 3) เอฟเฟกต์ตอนคลิก: อนุภาค + วงแหวน + ริปเปิลบนปุ่ม/การ์ด ---------- */
-const RIPPLE = '.btn,.filter,.tab,.nav-link,.pcard,.cat,.search-btn,.menu-pop a,.menu-pop button,.sr';
+const RIPPLE = '.btn,.filter,.tab,.nav-link,.search-btn,.menu-pop a,.menu-pop button,.sr,.plan';
 function ClickFX() {
   const cv = useRef(null);
   useEffect(() => {
@@ -90,15 +90,15 @@ function ClickFX() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     size();
-    const COLORS = ['139,108,240', '93,48,217', '196,181,253', '255,255,255'];
+    const rgb = () => getComputedStyle(document.documentElement).getPropertyValue('--main-rgb').trim() || '255,255,255';
     const burst = (x, y) => {
-      const n = 14;
+      const n = 10, C = rgb();
       for (let i = 0; i < n; i++) {
         const a = (Math.PI * 2 * i) / n + Math.random() * 0.5;
         const sp = 1.6 + Math.random() * 3.2;
-        parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 1.4 + Math.random() * 2.2, life: 1, decay: 0.025 + Math.random() * 0.02, c: COLORS[(Math.random() * COLORS.length) | 0] });
+        parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 1.4 + Math.random() * 2.2, life: 1, decay: 0.025 + Math.random() * 0.02, c: C });
       }
-      parts.push({ x, y, ring: true, r: 4, life: 1, decay: 0.045 });
+      parts.push({ x, y, ring: true, r: 4, life: 1, decay: 0.045, c: C });
       if (!raf) raf = requestAnimationFrame(tick);
     };
     const tick = () => {
@@ -109,7 +109,7 @@ function ClickFX() {
         if (p.ring) {
           p.r += 2.6; p.life -= p.decay;
           ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7);
-          ctx.strokeStyle = `rgba(139,108,240,${l * 0.7})`; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.strokeStyle = `rgba(${p.c},${l * 0.7})`; ctx.lineWidth = 1.5; ctx.stroke();
           continue;
         }
         p.x += p.vx; p.y += p.vy; p.vx *= 0.93; p.vy = p.vy * 0.93 + 0.06; p.life -= p.decay;
