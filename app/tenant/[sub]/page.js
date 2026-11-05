@@ -4,7 +4,7 @@ import { getPrefs } from '@/lib/lang';
 import { makeT } from '@/lib/i18n';
 import { TEMPLATES, getTemplate, demoSite } from '@/lib/templates';
 import { validPhone, maskPhone } from '@/lib/phone';
-import TenantPay, { PayPick } from '@/components/TenantPay';
+import TenantPay, { TenantItem } from '@/components/TenantPay';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +49,10 @@ export default async function Tenant({ params, searchParams }) {
     );
   }
   const title = s.title || r.sub;
-  const payOn = !demo && validPhone(s.pay_phone);
+  const payOn = demo || validPhone(s.pay_phone);
   const L = { title: t('ชำระเงินด้วยซองอั่งเปา TrueMoney'), sub: t('เงินเข้าเบอร์ผู้ขายทันที'), s1: t('1. สร้างซองอั่งเปาใน TrueMoney Wallet (จำนวน 1 คน)'), s2: t('2. ใส่ยอดตามราคาสินค้า แล้วคัดลอกลิงก์ซอง'), s3: t('3. วางลิงก์ด้านล่างแล้วกดยืนยัน'),
     item: t('เลือกสินค้า (ไม่บังคับ)'), name: t('ชื่อของคุณ (ไม่บังคับ)'), contact: t('ช่องทางติดต่อกลับ เช่น LINE / Discord'), submit: t('ยืนยันการชำระเงิน'), wait: t('กำลังตรวจสอบซอง…'),
-    done: t('ได้รับเงินแล้ว'), doneNote: t('แจ้งเจ้าของเว็บเพื่อรับสินค้า/บริการ'), again: t('จ่ายเพิ่ม') };
+    done: t('ได้รับเงินแล้ว'), doneNote: t('แจ้งเจ้าของเว็บเพื่อรับสินค้า/บริการ'), again: t('จ่ายเพิ่ม'), demo: t('โหมดทดลอง: ใช้งานได้เหมือนจริง แต่ไม่มีการตัดเงินหรือรับซองจริง วางลิงก์ซองรูปแบบใดก็ได้เพื่อลอง'), order: t('สั่งซื้อ'), close: t('ปิด'), contact: t('สนใจสินค้านี้ ติดต่อเจ้าของเว็บได้ที่ปุ่มติดต่อด้านบน') };
   return (
     <div className="tn" data-theme={theme} data-tpl={tpl} style={style}>
       <i className="tn-glow" aria-hidden="true" /><i className="tn-deco" aria-hidden="true" />
@@ -71,21 +71,11 @@ export default async function Tenant({ params, searchParams }) {
         {s.about && <section className="tn-about"><p>{s.about}</p></section>}
         {(s.items || []).length > 0 && (
           <section className="tn-grid">
-            {s.items.map((it, i) => (
-              <article className="tn-card" key={i} style={{ '--i': i % 8 }}>
-                {it.image ? <img src={it.image} alt="" loading="lazy" /> : null}
-                <div className="tn-card-b">
-                  <h3>{it.name}</h3>
-                  {it.desc && <p>{it.desc}</p>}
-                  {it.price && <div className="tn-price">{it.price}</div>}
-                  {payOn && <PayPick name={it.name} label={t('จ่ายด้วยซอง')} />}
-                </div>
-              </article>
-            ))}
+            {s.items.map((it, i) => <TenantItem key={i} it={it} i={i} payOn={payOn} L={L} />)}
           </section>
         )}
       </main>
-      {payOn && <TenantPay sub={r.sub} items={(s.items || []).map((x) => x.name)} masked={maskPhone(s.pay_phone)} L={L} />}
+      {payOn && <TenantPay sub={r.sub} items={(s.items || []).map((x) => x.name)} masked={demo ? '08x-xxx-xxxx' : maskPhone(s.pay_phone)} L={L} demo={demo} />}
       {demo && !embed && (
         <div className="tn-demo" role="navigation">
           <span>{t('นี่คือเว็บตัวอย่าง')}</span>

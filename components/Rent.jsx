@@ -21,20 +21,6 @@ function Shot({ slug }) {
   }, []);
   return <div className="shw-f" ref={box}><iframe ref={fr} src={`/${slug}?embed=1`} loading="lazy" tabIndex={-1} title={slug} aria-hidden="true" /></div>;
 }
-export function TemplateShowcase() {
-  const t = useT();
-  return (
-    <div className="shw">
-      {TEMPLATES.map((x) => (
-        <a key={x.slug} className="shw-c" href={'/' + x.slug} target="_blank" rel="noopener noreferrer">
-          <Shot slug={x.slug} />
-          <div className="shw-b"><div><b>{x.name}</b><span>flexozy.site/{x.slug}</span></div><span className="btn btn-sm">{t('ดูตัวอย่าง')} <Icon n="ext" size={13} /></span></div>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 /* ======================= หน้าเลือกแพ็กเกจ ======================= */
 export function TemplatePicker({ value, onChange, compact }) {
   const t = useT();
@@ -43,11 +29,9 @@ export function TemplatePicker({ value, onChange, compact }) {
       {TEMPLATES.map((x) => (
         <div key={x.slug} className={'tpl' + (value === x.slug ? ' on' : '')} onClick={() => onChange(x.slug)} role="radio" aria-checked={value === x.slug} tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(x.slug); } }}>
-          <div className="tpl-pv" style={{ background: x.swatch[0], '--a': x.swatch[1], '--b': x.swatch[2] }}>
-            <i className="l1" /><i className="l2" /><span className="b1" /><span className="b2" /><span className="b3" />
-            {x.tag && <em>{t(x.tag)}</em>}
-            <u aria-hidden="true"><Icon n="check" size={14} /></u>
-          </div>
+          {compact
+            ? <div className="tpl-dots" style={{ background: x.swatch[0] }}><i style={{ background: x.swatch[1] }} /><i style={{ background: x.swatch[2] }} /><u aria-hidden="true"><Icon n="check" size={13} /></u></div>
+            : <div className="tpl-pv"><Shot slug={x.slug} />{x.tag && <em>{t(x.tag)}</em>}<u aria-hidden="true"><Icon n="check" size={14} /></u></div>}
           <div className="tpl-b">
             <b>{x.name}</b>
             {!compact && <p>{t(x.desc)}</p>}
@@ -83,9 +67,6 @@ export function RentPlans({ plans, root, balance, loggedIn, initialTpl }) {
         ))}
         {plans.length === 0 && <div className="empty">—</div>}
       </div>
-      <h2 className="sec-h" style={{ marginTop: 40 }}>3. {t('ดูตัวอย่างเว็บก่อนซื้อ')}</h2>
-      <p className="muted" style={{ fontSize: 14, margin: '4px 0 0' }}>{t('คลิกการ์ดเพื่อเปิดดูเว็บตัวอย่างแบบเต็มหน้า')}</p>
-      <TemplateShowcase />
       {sel && <OrderModal plan={sel} root={root} balance={balance} tpl={tpl} setTpl={setTpl} onClose={() => setSel(null)} />}
     </>
   );

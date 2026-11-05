@@ -5,12 +5,25 @@ import { clientIp, rateLimit, recordAttempt } from '@/lib/auth';
 import { validateGiftLink, extractVoucherCode, redeemVoucher } from '@/lib/truemoney';
 import { rentalBySub, rentalState } from '@/lib/rent';
 import { validPhone } from '@/lib/phone';
+import { TEMPLATES, demoSite } from '@/lib/templates';
+import { priceNumber } from '@/lib/price';
 
 export const maxDuration = 30;
 
 // ลูกค้าของผู้เช่าวางลิงก์ซองอั่งเปา → รับเข้าเบอร์ TrueMoney ของผู้เช่าทันที (ไม่ผ่านกระเป๋าของระบบ)
 export const POST = route(async (req) => {
   const b = await body(req);
+  // โหมดทดลองของหน้าตัวอย่าง (/aurora ฯลฯ): ทำงานเหมือนจริงทุกขั้น แต่ไม่แตะ TrueMoney และไม่บันทึกอะไร
+  if (String(b.sub || '').startsWith('~')) {
+    const tpl = TEMPLATES.find((x) => x.slug === String(b.sub).slice(1));
+    if (!tpl) throw new HttpError(404, 'ไม่พบเว็บนี้');
+    if (!validateGiftLink(String(b.voucher || '').trim())) throw new HttpError(400, 'รูปแบบลิงก์อั่งเปาไม่ถูกต้อง (ต้องเป็น https://gift.truemoney.com/campaign/?v=...)');
+    await rateLimit(`tpaydemo:${await clientIp()}`, 30, 10);
+    await recordAttempt(`tpaydemo:${await clientIp()}`);
+    const it = demoSite(tpl.slug).items.find((x) => x.name === String(b.item || ''));
+    await new Promise((r) => setTimeout(r, 700));
+    return json({ ok: true, demo: true, amount: Math.round((priceNumber(it?.price) || 50) * 100) });
+  }
   const rental = await rentalBySub(String(b.sub || ''));
   if (!rental || rentalState(rental) !== 'active') throw new HttpError(404, 'ไม่พบเว็บนี้ หรือเว็บหมดอายุแล้ว');
   const phone = rental.site?.pay_phone;
