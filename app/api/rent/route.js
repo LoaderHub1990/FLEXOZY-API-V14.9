@@ -2,6 +2,7 @@ import { route, json, body } from '@/lib/api';
 import { q, one, tx, HttpError } from '@/lib/db';
 import { int } from '@/lib/util';
 import { getUser, requireUser, clientIp } from '@/lib/auth';
+import { seedSite } from '@/lib/templates';
 import { ROOT_DOMAIN, parseSub, isSubFree, getRentPlans, rentalState, cleanSite, lightLimit, siteUrl, GRACE_DAYS } from '@/lib/rent';
 
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export const POST = route(async (req) => {
         rental = (await c.query(
           `INSERT INTO rentals(user_id,plan_id,plan_name,sub,expires_at,site)
            VALUES($1,$2,$3,$4, now() + ($5 || ' days')::interval, $6::jsonb) RETURNING *`,
-          [u.id, plan.id, plan.name, parsed.sub, String(plan.days), JSON.stringify({ title: parsed.sub, tagline: '', about: '', logo: '', color: '#ffffff', theme: 'dark', links: [], items: [] })])).rows[0];
+          [u.id, plan.id, plan.name, parsed.sub, String(plan.days), JSON.stringify(seedSite(b.template, parsed.sub))])).rows[0];
       } catch (e) {
         if (e.code === '23505') throw new HttpError(409, `ชื่อ “${parsed.sub}” ถูกใช้แล้ว ลองชื่ออื่น`);
         throw e;

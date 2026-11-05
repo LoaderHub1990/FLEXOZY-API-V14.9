@@ -6,17 +6,70 @@ import { api, baht, fmtDate } from './api';
 import { Modal, useShell } from './Shell';
 import { useT } from './Prefs';
 import Icon from './Icons';
+import { EXAMPLE_SUB, TEMPLATES, getTemplate } from '@/lib/templates';
 
 const clean = (v) => v.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
 const PERKS = ['ลิงก์ชื่อที่คุณตั้งเอง', 'แก้ไขหน้าเว็บได้เองตลอดเวลา', 'เปิดใช้งานทันทีหลังชำระเงิน', 'ต่ออายุได้ง่ายจากกระเป๋าเงิน'];
 
+/* ตัวอย่างเว็บจริง (ย่อส่วน) ใต้แพ็กเกจ — คลิกเพื่อเปิดดูเต็มหน้า */
+function Shot({ slug }) {
+  const box = useRef(null), fr = useRef(null);
+  useEffect(() => {
+    const el = box.current; if (!el || !fr.current) return;
+    const fit = () => { fr.current.style.transform = `scale(${el.clientWidth / 1280})`; };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); return () => ro.disconnect();
+  }, []);
+  return <div className="shw-f" ref={box}><iframe ref={fr} src={`/${slug}?embed=1`} loading="lazy" tabIndex={-1} title={slug} aria-hidden="true" /></div>;
+}
+export function TemplateShowcase() {
+  const t = useT();
+  return (
+    <div className="shw">
+      {TEMPLATES.map((x) => (
+        <a key={x.slug} className="shw-c" href={'/' + x.slug} target="_blank" rel="noopener noreferrer">
+          <Shot slug={x.slug} />
+          <div className="shw-b"><div><b>{x.name}</b><span>flexozy.site/{x.slug}</span></div><span className="btn btn-sm">{t('ดูตัวอย่าง')} <Icon n="ext" size={13} /></span></div>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /* ======================= หน้าเลือกแพ็กเกจ ======================= */
-export function RentPlans({ plans, root, balance, loggedIn }) {
+export function TemplatePicker({ value, onChange, compact }) {
+  const t = useT();
+  return (
+    <div className={'tpl-grid' + (compact ? ' compact' : '')}>
+      {TEMPLATES.map((x) => (
+        <div key={x.slug} className={'tpl' + (value === x.slug ? ' on' : '')} onClick={() => onChange(x.slug)} role="radio" aria-checked={value === x.slug} tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(x.slug); } }}>
+          <div className="tpl-pv" style={{ background: x.swatch[0], '--a': x.swatch[1], '--b': x.swatch[2] }}>
+            <i className="l1" /><i className="l2" /><span className="b1" /><span className="b2" /><span className="b3" />
+            {x.tag && <em>{t(x.tag)}</em>}
+            <u aria-hidden="true"><Icon n="check" size={14} /></u>
+          </div>
+          <div className="tpl-b">
+            <b>{x.name}</b>
+            {!compact && <p>{t(x.desc)}</p>}
+            <a href={'/' + x.slug} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{t('ดูตัวอย่าง')} <Icon n="ext" size={12} /></a>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function RentPlans({ plans, root, balance, loggedIn, initialTpl }) {
   const t = useT();
   const { openAuth } = useShell();
   const [sel, setSel] = useState(null);
+  const [tpl, setTpl] = useState(TEMPLATES.some((x) => x.slug === initialTpl) ? initialTpl : TEMPLATES[0].slug);
   return (
     <>
+      <h2 className="sec-h" style={{ marginTop: 26 }}>1. {t('เลือกแบบหน้าเว็บ')}</h2>
+      <p className="muted" style={{ fontSize: 14, margin: '4px 0 14px' }}>{t('กด “ดูตัวอย่าง” เพื่อเปิดเว็บตัวอย่างจริงของแต่ละแบบ')}</p>
+      <TemplatePicker value={tpl} onChange={setTpl} />
+      <h2 className="sec-h" style={{ marginTop: 34 }}>2. {t('เลือกแพ็กเกจ')}</h2>
       <div className="plans">
         {plans.map((p, i) => (
           <div key={p.id} className={'plan rv' + (i === 0 ? ' pop' : '')} style={{ '--i': i }}>
@@ -30,12 +83,15 @@ export function RentPlans({ plans, root, balance, loggedIn }) {
         ))}
         {plans.length === 0 && <div className="empty">—</div>}
       </div>
-      {sel && <OrderModal plan={sel} root={root} balance={balance} onClose={() => setSel(null)} />}
+      <h2 className="sec-h" style={{ marginTop: 40 }}>3. {t('ดูตัวอย่างเว็บก่อนซื้อ')}</h2>
+      <p className="muted" style={{ fontSize: 14, margin: '4px 0 0' }}>{t('คลิกการ์ดเพื่อเปิดดูเว็บตัวอย่างแบบเต็มหน้า')}</p>
+      <TemplateShowcase />
+      {sel && <OrderModal plan={sel} root={root} balance={balance} tpl={tpl} setTpl={setTpl} onClose={() => setSel(null)} />}
     </>
   );
 }
 
-function OrderModal({ plan, root, balance, onClose }) {
+function OrderModal({ plan, root, balance, tpl, setTpl, onClose }) {
   const t = useT();
   const router = useRouter();
   const [name, setName] = useState('');
@@ -60,7 +116,7 @@ function OrderModal({ plan, root, balance, onClose }) {
   const short = balance < plan.price;
   async function buy() {
     setErr(''); setBusy(true);
-    try { const r = await api('/api/rent', 'POST', { planId: plan.id, sub: name }); setDone(r.rental); router.refresh(); }
+    try { const r = await api('/api/rent', 'POST', { planId: plan.id, sub: name, template: tpl }); setDone(r.rental); router.refresh(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 
@@ -84,11 +140,13 @@ function OrderModal({ plan, root, balance, onClose }) {
       <p className="muted" style={{ fontSize: 14, margin: '4px 0 16px' }}>{t('ตั้งชื่อเว็บของคุณ')}</p>
       <label className="label" style={{ marginTop: 0 }}>{t('ชื่อเว็บที่ต้องการ')}</label>
       <div className="sub-in">
-        <input autoFocus value={name} onChange={(e) => setName(clean(e.target.value))} placeholder="128bit" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={32} aria-label={t('ชื่อเว็บที่ต้องการ')} />
+        <input autoFocus value={name} onChange={(e) => setName(clean(e.target.value))} placeholder={EXAMPLE_SUB} inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={32} aria-label={t('ชื่อเว็บที่ต้องการ')} />
         <span>.{root}</span>
       </div>
       <div className={'sub-hint ' + hint[0]}>{hint[1] || <span className="subtle">{t('a-z 0-9 และ - ยาว 3-32 ตัว')}</span>}</div>
-      <div className="cf-rows" style={{ marginTop: 10 }}>
+      <label className="label">{t('แบบหน้าเว็บ')}</label>
+      <TemplatePicker value={tpl} onChange={setTpl} compact />
+      <div className="cf-rows" style={{ marginTop: 14 }}>
         <div><span>{t('อายุการใช้งาน')}</span><b>{plan.days} {t('วัน')}</b></div>
         <div className="cf-total"><span>{t('ราคา')}</span><b>{baht(plan.price)} ฿</b></div>
         <div><span>{t('ยอดเงินคงเหลือ')}</span><b>{baht(balance)} ฿</b></div>
@@ -154,7 +212,7 @@ function RenewModal({ r, plans, balance, onClose, onDone }) {
 function RentalCard({ r, root, onRenew, onSaved }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [s, setS] = useState({ title: '', tagline: '', about: '', logo: '', color: '#ffffff', theme: 'dark', links: [], items: [], ...r.site });
+  const [s, setS] = useState({ title: '', tagline: '', about: '', logo: '', color: '#ffffff', theme: 'dark', template: 'aurora', pay_phone: '', pay_name: '', pay_note: '', links: [], items: [], ...r.site });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const tag = TAG[r.status] || TAG.active;
@@ -193,8 +251,19 @@ function RentalCard({ r, root, onRenew, onSaved }) {
                 <input type="color" className="plain" value={s.color} onChange={(e) => up('color', e.target.value)} style={{ width: 46, height: 42, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'none', padding: 2 }} />
                 <input className="input" value={s.color} onChange={(e) => up('color', e.target.value)} maxLength={7} />
               </div></div>
+            <div><label className="label" style={{ marginTop: 0 }}>{t('แบบหน้าเว็บ')}</label>
+              <select className="input" value={s.template || 'aurora'} onChange={(e) => up('template', e.target.value)}>{TEMPLATES.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select></div>
             <div><label className="label" style={{ marginTop: 0 }}>{t('ธีมหน้าเว็บ')}</label>
               <select className="input" value={s.theme} onChange={(e) => up('theme', e.target.value)}><option value="dark">{t('มืด')}</option><option value="light">{t('สว่าง')}</option></select></div>
+          </div>
+          <div className="panel" style={{ padding: 14, display: 'grid', gap: 10 }}>
+            <b style={{ fontSize: 14 }}>{t('รับเงินด้วยเบอร์ (PromptPay / TrueMoney)')}</b>
+            <div className="row2">
+              <div><label className="label" style={{ marginTop: 0 }}>{t('เบอร์รับเงิน (10 หลัก)')}</label><input className="input" inputMode="numeric" maxLength={12} placeholder="0812345678" value={s.pay_phone || ''} onChange={(e) => up('pay_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
+              <div><label className="label" style={{ marginTop: 0 }}>{t('ชื่อบัญชี')}</label><input className="input" maxLength={40} value={s.pay_name || ''} onChange={(e) => up('pay_name', e.target.value)} /></div>
+            </div>
+            <input className="input" maxLength={120} placeholder={t('หมายเหตุ (ไม่บังคับ) เช่น โอนแล้วแจ้งสลิปทาง LINE')} value={s.pay_note || ''} onChange={(e) => up('pay_note', e.target.value)} />
+            <p className="subtle" style={{ fontSize: 12.5 }}>{t('เงินเข้าบัญชีของคุณโดยตรง ระบบนี้ไม่ได้ถือเงินและไม่ตรวจสอบการโอน — ลูกค้าสแกน QR ที่หน้าเว็บ และราคาที่เป็นตัวเลขจะมีปุ่ม “จ่ายด้วย QR” ตามยอดให้อัตโนมัติ')}</p>
           </div>
           <div className="chips-in">
             <b style={{ fontSize: 14 }}>{t('ลิงก์ติดต่อ')}</b>

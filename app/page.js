@@ -1,3 +1,4 @@
+import { EXAMPLE_SUB } from '@/lib/templates';
 import Link from 'next/link';
 import { getCategories, getProducts, getSettings, getStats, getRecentOrders, getReviews, getReviewStats } from '@/lib/shop';
 import { baht } from '@/lib/util';
@@ -64,7 +65,7 @@ export default async function Home() {
         <section className="rent-promo rv rv-up">
           <div>
             <h3>{t('เช่าเว็บของคุณเอง')} · {t('เริ่มต้นเพียง')} {baht(cheapest.price)} ฿ / {cheapest.days} {t('วัน')}</h3>
-            <p>{t('ได้ลิงก์ชื่อที่คุณตั้งเอง เช่น')} <code>128bit.{ROOT_DOMAIN}</code></p>
+            <p>{t('ได้ลิงก์ชื่อที่คุณตั้งเอง เช่น')} <code>{EXAMPLE_SUB}.{ROOT_DOMAIN}</code></p>
           </div>
           <Link href="/rent" className="btn btn-primary">{t('ดูแพ็กเกจ')} <Icon n="arrow" size={15} /></Link>
         </section>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { RESERVED_SLUGS } from './lib/reserved.js';
 import { ADMIN_PATH } from './lib/adminPath.js';
+import { TEMPLATE_SLUGS } from './lib/templates';
 
 // Hub (ร้านค้าบอท Discord) อยู่บนโดเมนหลักเดียวกัน:
 //   flexozy.site/shop/login      → หน้าล็อกอิน/สมัคร
@@ -45,6 +46,14 @@ export function middleware(req) {
     h.set('x-tenant', '1');
     const url = req.nextUrl.clone();
     url.pathname = `/tenant/${seg[1].toLowerCase()}`;
+    return NextResponse.rewrite(url, { request: { headers: h } });
+  }
+  // หน้าตัวอย่างแม่แบบ: https://โดเมนหลัก/aurora ฯลฯ
+  if (seg.length === 1 && TEMPLATE_SLUGS.includes(seg[0].toLowerCase())) {
+    const h = new Headers(req.headers);
+    h.set('x-tenant', '1');
+    const url = req.nextUrl.clone();
+    url.pathname = `/tenant/~${seg[0].toLowerCase()}`;
     return NextResponse.rewrite(url, { request: { headers: h } });
   }
   if (seg[0] === 'tenant') {
