@@ -225,7 +225,12 @@ function RentalCard({ r, root, onRenew, onSaved }) {
             <div><label className="label" style={{ marginTop: 0 }}>{t('ชื่อเว็บ')}</label><input className="input" maxLength={40} value={s.title} onChange={(e) => up('title', e.target.value)} /></div>
             <div><label className="label" style={{ marginTop: 0 }}>{t('คำโปรย')}</label><input className="input" maxLength={120} value={s.tagline} onChange={(e) => up('tagline', e.target.value)} /></div>
           </div>
-          <div><label className="label" style={{ marginTop: 0 }}>{t('เกี่ยวกับ')}</label><textarea className="input" rows={3} maxLength={600} value={s.about} onChange={(e) => up('about', e.target.value)} /></div>
+          <div className="row2">
+            <div><label className="label" style={{ marginTop: 0 }}>Title (English, optional)</label><input className="input" maxLength={40} value={s.title_en || ''} onChange={(e) => up('title_en', e.target.value)} /></div>
+            <div><label className="label" style={{ marginTop: 0 }}>Tagline (English, optional)</label><input className="input" maxLength={120} value={s.tagline_en || ''} onChange={(e) => up('tagline_en', e.target.value)} /></div>
+          </div>
+          <div><label className="label" style={{ marginTop: 0 }}>{t('เกี่ยวกับ')}</label><textarea className="input" rows={3} maxLength={600} value={s.about} onChange={(e) => up('about', e.target.value)} />
+            <input className="input" style={{ marginTop: 8 }} maxLength={600} placeholder="About (English, optional)" value={s.about_en || ''} onChange={(e) => up('about_en', e.target.value)} /></div>
           <div className="row2">
             <div><label className="label" style={{ marginTop: 0 }}>{t('ลิงก์โลโก้ (https://...)')}</label><input className="input" value={s.logo} onChange={(e) => up('logo', e.target.value)} placeholder="https://..." /></div>
             <div><label className="label" style={{ marginTop: 0 }}>{t('สีหลัก')}</label>

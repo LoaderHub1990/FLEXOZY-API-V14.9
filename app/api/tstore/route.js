@@ -20,7 +20,7 @@ export const GET = route(async (req) => {
     const { rows } = await q('SELECT id,product_name,qty,total,delivered,created_at FROM t_orders WHERE rental_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 50', [r.id, u.id]);
     return json({ rows: rows.map((x) => ({ ...x, total: Number(x.total) })) });
   }
-  return json({ ...(await getCatalog(r.id)), me: await getTUser(r) });
+  return json({ ...(await getCatalog(r.id, { demo: r.demo })), me: await getTUser(r) });
 });
 
 export const POST = route(async (req) => {

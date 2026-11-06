@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { rentalState, ROOT_DOMAIN } from '@/lib/rent';
 import { TEMPLATES, getTemplate } from '@/lib/templates';
 import { validPhone } from '@/lib/phone';
 import { loadRental, getCatalog, getTUser } from '@/lib/tstore';
-import TenantStore from '@/components/TenantStore';
+import { makeT } from '@/lib/i18n';
+import TenantApp from '@/components/TenantApp';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,38 +32,28 @@ export default async function Tenant({ params, searchParams }) {
   const st = rentalState(r);
   const s = r.site || {};
   const tpl = getTemplate(s.template).slug;
-  const theme = s.theme === 'light' ? 'light' : 'dark';
+  const jar = await cookies();
+  const ck = jar.get('fx_theme')?.value;
+  const theme = ck === 'light' || ck === 'dark' ? ck : (s.theme === 'light' ? 'light' : 'dark'); // ผู้เข้าชมเลือกเองได้ ไม่เลือก = ใช้ธีมที่เจ้าของร้านตั้ง
+  const lang = jar.get('fx_lang')?.value === 'en' ? 'en' : 'th';
   const color = hex(s.color);
-  const style = { '--ac': color, '--ac-rgb': rgb(color), '--on-ac': onColor(color) };
-
+  
+  const vars = { '--ac': color, '--ac-rgb': rgb(color), '--on-ac': onColor(color) };
   if (st !== 'active') {
     return (
-      <div className="tn" data-theme={theme} data-tpl={tpl} style={style}>
+      <div className="tsk" data-skin={tpl} data-theme={theme} lang={lang} style={vars}>
         <main className="tn-gone">
           <div className="tn-gone-ic">{st === 'suspended' ? '⏸' : '⌛'}</div>
-          <h1>{st === 'suspended' ? 'ร้านนี้ถูกระงับ' : 'ร้านนี้หมดอายุแล้ว'}</h1>
-          <p>เจ้าของร้านสามารถต่ออายุได้ที่ <a href={`https://${ROOT_DOMAIN}/rent/my`}>{ROOT_DOMAIN}/rent/my</a></p>
+          <h1>{st === 'suspended' ? makeT(lang)('ร้านนี้ถูกระงับ') : makeT(lang)('ร้านนี้หมดอายุแล้ว')}</h1>
+          <p>{makeT(lang)('เจ้าของร้านสามารถต่ออายุได้ที่')} <a href={`https://${ROOT_DOMAIN}/rent/my`}>{ROOT_DOMAIN}/rent/my</a></p>
         </main>
       </div>
     );
   }
-  const [catalog, me] = await Promise.all([getCatalog(r.id), getTUser(r)]);
+  const [catalog, me] = await Promise.all([getCatalog(r.id, { demo }), getTUser(r)]);
   const shop = {
-    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', logo: s.logo || '',
+    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', title_en: s.title_en || '', tagline_en: s.tagline_en || '', about_en: s.about_en || '', logo: s.logo || '', root: ROOT_DOMAIN, embed,
     links: (s.links || []).map((l) => ({ label: l.label, url: safeHref(l.url) })), canTopup: validPhone(s.pay_phone),
   };
-  return (
-    <div className="tn" data-theme={theme} data-tpl={tpl} style={style}>
-      <i className="tn-glow" aria-hidden="true" /><i className="tn-deco" aria-hidden="true" />
-      <TenantStore sub={r.sub} demo={demo} shop={shop} initial={{ ...catalog, me }} />
-      {demo && !embed && (
-        <div className="tn-demo" role="navigation">
-          <span>ร้านตัวอย่าง — ลองสมัคร เติมเงิน ซื้อของได้จริง</span>
-          <div className="tn-demo-sw">{TEMPLATES.map((x) => <a key={x.slug} href={'/' + x.slug} className={x.slug === tpl ? 'on' : ''}>{x.name}</a>)}</div>
-          <a className="tn-demo-cta" href={`/rent?tpl=${tpl}`}>เลือกแบบนี้ →</a>
-        </div>
-      )}
-      <footer className="tn-foot">สร้างด้วย <a href={`https://${ROOT_DOMAIN}/rent`}>{ROOT_DOMAIN}</a></footer>
-    </div>
-  );
+  return <TenantApp sub={r.sub} demo={demo} shop={shop} initial={{ ...catalog, me }} skin={tpl} theme={theme} lang={lang} vars={vars} others={TEMPLATES.map((x) => ({ slug: x.slug, name: x.name }))} />;
 }

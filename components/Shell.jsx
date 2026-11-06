@@ -10,6 +10,7 @@ import { perfAllowed } from './consent';
 import Captcha from './Captcha';
 import { Avatar, ProfileCard } from './Avatar';
 import { Prefs, useT } from './Prefs';
+import { AuthShell, AField } from './AuthUI';
 
 // แดชบอร์ดเจ้าของร้าน (Hub) อยู่โดเมนเดียวกัน — middleware rewrite ไป app/hub/dashboard
 const DASH = '/shop/dashboard';
@@ -17,7 +18,7 @@ const DASH = '/shop/dashboard';
 const Ctx = createContext(null);
 export const useShell = () => useContext(Ctx);
 
-function Modal({ onClose, children, wide }) {
+function Modal({ onClose, children, wide, cls = '' }) {
   const t = useT();
   // วาดผ่าน portal ไปที่ <body> — ถ้าไม่ทำ โมดัลที่เปิดจากในหน้า (เช่นหลังบ้าน) จะติดอยู่ใน <main>
   // ซึ่งมี z-index:1 ทำให้ footer และวิดเจ็ต Discord ทับโมดัลได้
@@ -33,7 +34,7 @@ function Modal({ onClose, children, wide }) {
   if (!mounted) return null;
   return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={'modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" style={{ position: 'relative' }}>
+      <div className={'modal' + (wide ? ' wide' : '') + (cls ? ' ' + cls : '')} role="dialog" aria-modal="true" style={{ position: 'relative' }}>
         <button className="btn btn-sm x" onClick={onClose} aria-label={t('ปิด')}><Icon n="x" size={16} /></button>
         {children}
       </div>
@@ -43,7 +44,7 @@ function Modal({ onClose, children, wide }) {
 }
 export { Modal };
 
-function AuthModal({ mode: m0, onClose, discordLogin }) {
+function AuthModal({ mode: m0, onClose, discordLogin, settings }) {
   const router = useRouter();
   const t = useT();
   const [mode, setMode] = useState(m0);
@@ -71,46 +72,37 @@ function AuthModal({ mode: m0, onClose, discordLogin }) {
   const locked = !ready;
   const noTok = !cap;
   return (
-    <Modal onClose={onClose}>
-      <h3>{mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')}</h3>
-      <p className="muted" style={{ fontSize: 14, marginBottom: 16 }}>
-        {mode === 'login' ? t('ยินดีต้อนรับกลับมา') : t('สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน')}
-      </p>
-      <div className="tabs">
-        <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setErr(''); }}>{t('เข้าสู่ระบบ')}</button>
-        <button type="button" className={mode === 'register' ? 'on' : ''} onClick={() => { setMode('register'); setErr(''); }}>{t('สมัครสมาชิก')}</button>
-      </div>
-      <Captcha onToken={setCap} rerun={rerun} />
-      <fieldset className={'gate' + (locked ? ' locked' : '')} disabled={locked}>
-        {discordLogin && (
-          <>
-            <a className="btn btn-discord" href={noTok ? undefined : `/api/auth/discord?cap=${encodeURIComponent(cap)}`} aria-disabled={noTok} onClick={(e) => noTok && e.preventDefault()}>
-              <Icon n="discord" size={20} /> {mode === 'login' ? t('เข้าสู่ระบบด้วย Discord') : t('สมัครด้วย Discord')}
-            </a>
-            <div className="or-sep"><span>{t('หรือ')}</span></div>
-          </>
-        )}
-        <form onSubmit={submit}>
-          <div className="field">
-            <label className="label" style={{ marginTop: 0 }}>{mode === 'login' ? t('ชื่อผู้ใช้หรืออีเมล') : t('ชื่อผู้ใช้')}</label>
-            <input className="input" autoComplete="username" value={f.username} onChange={set('username')} placeholder={mode === 'login' ? 'username / email' : 'a-z 0-9 _ . (3-20 ตัว)'} required />
-          </div>
-          {mode === 'register' && (
-            <div className="field">
-              <label className="label" style={{ marginTop: 0 }}>{t('อีเมล')}</label>
-              <input className="input" type="email" autoComplete="email" value={f.email} onChange={set('email')} placeholder="you@example.com" required />
-            </div>
+    <Modal onClose={onClose} cls="auth">
+      <AuthShell mode={mode} setMode={(m) => { setMode(m); setErr(''); }} brand={settings?.shop_name || 'Flexozy Hub'} logo={settings?.logo}
+        title={mode === 'login' ? t('ยินดีต้อนรับกลับมา') : t('สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน')}
+        sub={mode === 'login' ? t('เข้าสู่ระบบเพื่อดูยอดเงิน ประวัติการสั่งซื้อ และคีย์ของคุณ') : t('สมัครฟรี ใช้เวลาไม่ถึงหนึ่งนาที')}
+        perks={[['bolt', t('รับสินค้าทันทีหลังชำระเงิน')], ['shield', t('ปลอดภัย ตรวจสอบก่อนเข้าสู่ระบบ')], ['wallet', t('เติมเงินง่ายด้วยซองอั่งเปา')]]}
+        labels={{ login: t('เข้าสู่ระบบ'), register: t('สมัครสมาชิก') }}>
+        <Captcha onToken={setCap} rerun={rerun} />
+        <fieldset className={'gate' + (locked ? ' locked' : '')} disabled={locked} style={{ display: 'grid', gap: 14 }}>
+          {discordLogin && (
+            <>
+              <a className="btn btn-discord" href={noTok ? undefined : `/api/auth/discord?cap=${encodeURIComponent(cap)}`} aria-disabled={noTok} onClick={(e) => noTok && e.preventDefault()}>
+                <Icon n="discord" size={20} /> {mode === 'login' ? t('เข้าสู่ระบบด้วย Discord') : t('สมัครด้วย Discord')}
+              </a>
+              <div className="or-sep" style={{ margin: 0 }}><span>{t('หรือ')}</span></div>
+            </>
           )}
-          <div className="field">
-            <label className="label" style={{ marginTop: 0 }}>{t('รหัสผ่าน')}</label>
-            <input className="input" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={f.password} onChange={set('password')} placeholder={mode === 'register' ? t('อย่างน้อย 8 ตัวอักษร') : '••••••••'} required />
-          </div>
-          {err && <div className="msg err">{err}</div>}
-          <button className="btn btn-primary" style={{ width: '100%', marginTop: 18 }} disabled={busy || noTok}>
-            {busy || (ready && noTok) ? <span className="spin" /> : mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')}
-          </button>
-        </form>
-      </fieldset>
+          <form onSubmit={submit} key={mode}>
+            <AField icon="user" label={mode === 'login' ? t('ชื่อผู้ใช้หรืออีเมล') : t('ชื่อผู้ใช้')} autoComplete="username" value={f.username} onChange={set('username')} required />
+            {mode === 'register' && <AField icon="mail" type="email" label={t('อีเมล')} autoComplete="email" value={f.email} onChange={set('email')} required />}
+            <AField icon="lock" type="password" label={mode === 'register' ? `${t('รหัสผ่าน')} (${t('อย่างน้อย 8 ตัวอักษร')})` : t('รหัสผ่าน')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={f.password} onChange={set('password')} required />
+            {err && <div className="msg err" style={{ margin: 0 }}>{err}</div>}
+            <button className="auth2-go" disabled={busy || noTok}>
+              {busy || (ready && noTok) ? <span className="spin" /> : <>{mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')} <Icon n="arrow" size={16} /></>}
+            </button>
+          </form>
+        </fieldset>
+        <div className="auth2-foot">
+          {mode === 'login' ? t('ยังไม่มีบัญชี?') : t('มีบัญชีอยู่แล้ว?')}{' '}
+          <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}>{mode === 'login' ? t('สมัครสมาชิก') : t('เข้าสู่ระบบ')}</button>
+        </div>
+      </AuthShell>
     </Modal>
   );
 }
@@ -339,7 +331,7 @@ export default function Shell({ user, settings, discordLogin, adminPath = 'admin
 
       <AnnouncementPopup enabled={settings.popup_enabled === '1'} items={popupItems(settings)} version={settings.popup_version} />
       <CookieBanner forceOpen={cookieOpen} onClose={() => setCookieOpen(false)} />
-      {modal?.startsWith('auth:') && <AuthModal mode={modal.split(':')[1]} onClose={close} discordLogin={discordLogin} />}
+      {modal?.startsWith('auth:') && <AuthModal mode={modal.split(':')[1]} onClose={close} discordLogin={discordLogin} settings={settings} />}
       {modal === 'profile' && user && <DiscordProfileModal user={user} discordLogin={discordLogin} onClose={close} />}
       {toast && <Toast text={toast} onDone={() => setToast('')} />}
       {modal === 'search' && <SearchModal onClose={close} />}

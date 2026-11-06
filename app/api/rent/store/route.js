@@ -33,7 +33,7 @@ export const GET = route(async (req) => {
       (SELECT count(*) FROM t_topups WHERE rental_id=$1 AND status IN ('review','redeemed'))::int AS review`, [r.id]);
     return json({ ...x, revenue: Number(x.revenue), topups: Number(x.topups), sub: r.sub });
   }
-  if (view === 'categories') return json({ rows: (await q('SELECT id,name,sort FROM t_categories WHERE rental_id=$1 ORDER BY sort,id', [r.id])).rows });
+  if (view === 'categories') return json({ rows: (await q('SELECT id,name,image,sort FROM t_categories WHERE rental_id=$1 ORDER BY sort,id', [r.id])).rows });
   if (view === 'products') {
     const { rows } = await q(`SELECT p.id,p.category_id,p.name,p.description,p.price,p.image,p.unlimited,p.delivery_text,p.active,p.sort,p.sold,
         (SELECT count(*) FROM t_stock s WHERE s.product_id=p.id AND NOT s.sold)::int AS stock FROM t_products p WHERE p.rental_id=$1 ORDER BY p.sort,p.id`, [r.id]);
@@ -52,11 +52,12 @@ export const POST = route(async (req) => {
 
   if (op === 'cat.save') {
     const name = str(b.name, { min: 1, max: 40, name: 'ชื่อหมวดหมู่' });
-    if (b.id) await q('UPDATE t_categories SET name=$1 WHERE id=$2 AND rental_id=$3', [name, int(b.id, { min: 1 }), r.id]);
+    const image = safeImage(b.image || '');
+    if (b.id) await q('UPDATE t_categories SET name=$1,image=$2 WHERE id=$3 AND rental_id=$4', [name, image, int(b.id, { min: 1 }), r.id]);
     else {
       const n = await one('SELECT count(*)::int AS n FROM t_categories WHERE rental_id=$1', [r.id]);
       if (n.n >= 30) throw new HttpError(400, 'สร้างหมวดหมู่ได้สูงสุด 30');
-      await q('INSERT INTO t_categories(rental_id,name,sort) VALUES($1,$2,$3)', [r.id, name, n.n]);
+      await q('INSERT INTO t_categories(rental_id,name,image,sort) VALUES($1,$2,$3,$4)', [r.id, name, image, n.n]);
     }
     return json({ ok: true });
   }

@@ -69,7 +69,8 @@ function Categories({ id, rows, reload, setErr }) {
       </form>
       {rows.map((c) => (
         <div className="panel" key={c.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12 }}>
-          <input className="input" defaultValue={c.name} maxLength={40} onBlur={(e) => e.target.value.trim() && e.target.value !== c.name && run(post(id, 'cat.save', { id: c.id, name: e.target.value }))} />
+          <input className="input" defaultValue={c.name} maxLength={40} style={{ flex: 1 }} onBlur={(e) => e.target.value.trim() && e.target.value !== c.name && run(post(id, 'cat.save', { id: c.id, name: e.target.value, image: c.image }))} />
+          <input className="input" defaultValue={c.image} placeholder="ลิงก์รูปหมวดหมู่ https://…" style={{ flex: 2 }} onBlur={(e) => e.target.value !== c.image && run(post(id, 'cat.save', { id: c.id, name: c.name, image: e.target.value }))} />
           <button className="btn btn-sm btn-danger" onClick={() => confirm(`ลบหมวด “${c.name}” ? (สินค้าในหมวดจะไม่หาย)`) && run(post(id, 'cat.delete', { id: c.id }))}>ลบ</button>
         </div>
       ))}

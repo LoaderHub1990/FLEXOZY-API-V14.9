@@ -554,3 +554,58 @@ html .nav-d .nav-dash{background:rgba(var(--fg-rgb),.06);box-shadow:inset 0 0 0 
 .tpl-dots i{width:14px;height:14px;border-radius:50%}
 .tpl-dots u{position:absolute;right:8px;top:6px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--text);color:var(--bg);opacity:0;transform:scale(.4);transition:opacity .2s,transform .35s cubic-bezier(.34,1.56,.64,1)}
 .tpl.on .tpl-dots u{opacity:1;transform:scale(1)}
+
+/* =====================================================================
+   หน้าล็อกอินแบบใหม่ (auth2) — ใช้ร่วมกับร้านเช่า (ใช้ตัวแปรสีของสกินอัตโนมัติ)
+   ===================================================================== */
+.modal.auth{max-width:880px;padding:0;overflow:hidden;border-radius:26px;display:block}
+.modal.auth>.x{z-index:5;background:rgba(var(--bg-rgb),.5);border-color:var(--border-strong)}
+.auth2{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1fr);min-height:520px}
+.auth2-side{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:28px;padding:32px 30px;overflow:hidden;color:var(--text);background:linear-gradient(160deg,rgba(var(--main-rgb),.22),rgba(var(--main-rgb),.05) 55%,transparent),var(--surface-2);border-right:1px solid var(--border)}
+.auth2-side .o{position:absolute;border-radius:50%;pointer-events:none;will-change:transform}
+.auth2-side .o1{width:260px;height:260px;right:-90px;top:-70px;background:radial-gradient(circle at 35% 35%,rgba(var(--main-rgb),.55),transparent 68%);animation:a2f 9s ease-in-out infinite}
+.auth2-side .o2{width:200px;height:200px;left:-70px;bottom:40px;background:radial-gradient(circle at 60% 40%,rgba(var(--main-rgb),.38),transparent 70%);animation:a2f 11s ease-in-out -3s infinite reverse}
+.auth2-side .o3{width:90px;height:90px;right:40px;bottom:120px;border:1px solid rgba(var(--main-rgb),.45);animation:a2f 7s ease-in-out -2s infinite}
+.auth2-side .grid{position:absolute;inset:0;background:linear-gradient(rgba(var(--fg-rgb),.05) 1px,transparent 1px) 0 0/34px 34px,linear-gradient(90deg,rgba(var(--fg-rgb),.05) 1px,transparent 1px) 0 0/34px 34px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 30% 30%,#000,transparent);mask-image:radial-gradient(ellipse 80% 70% at 30% 30%,#000,transparent)}
+@keyframes a2f{50%{transform:translate3d(0,-16px,0) scale(1.06)}}
+.auth2-brand,.auth2-brand-m{position:relative;display:flex;align-items:center;gap:10px;font-size:17px}
+.auth2-brand img,.auth2-brand-m img{border-radius:12px;object-fit:cover}
+.auth2-dot{width:14px;height:14px;border-radius:50%;background:var(--main);box-shadow:0 0 18px rgba(var(--main-rgb),.8)}
+.auth2-hero{position:relative}
+.auth2-hero h2{font-size:clamp(26px,3.4vw,34px);line-height:1.15;font-weight:800;letter-spacing:-.03em}
+.auth2-hero p{margin-top:10px;color:var(--muted);font-size:14.5px;line-height:1.6;max-width:300px}
+.auth2-side ul{position:relative;list-style:none;display:grid;gap:10px}
+.auth2-side li{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted)}
+.auth2-side li span{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:rgba(var(--main-rgb),.14);border:1px solid rgba(var(--main-rgb),.3);color:var(--text)}
+.auth2-main{display:flex;flex-direction:column;justify-content:center;gap:20px;padding:36px 36px 32px;min-width:0}
+.auth2-brand-m{display:none}
+.auth2-seg{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border)}
+.auth2-seg i{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--text);transition:transform .45s cubic-bezier(.34,1.3,.64,1);will-change:transform}
+.auth2-seg[data-mode="register"] i{transform:translateX(100%)}
+.auth2-seg button{position:relative;z-index:1;padding:10px 8px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:color .3s;background:none!important}
+.auth2-seg button[aria-selected="true"]{color:var(--bg)}
+.auth2-form{display:grid;gap:14px}
+.auth2-form form{display:grid;gap:14px;animation:a2in .4s var(--ease-out) both}
+@keyframes a2in{from{opacity:0;transform:translate3d(0,10px,0)}}
+.af{position:relative;display:block}
+.af input{width:100%;padding:22px 44px 8px 44px;border-radius:14px;background:rgba(var(--fg-rgb),.04);border:1px solid var(--border-strong);color:var(--text);outline:none;font-size:15px;transition:border-color .2s,box-shadow .2s,background .2s}
+.af input:hover{background:rgba(var(--fg-rgb),.06)}
+.af input:focus{border-color:var(--main);box-shadow:0 0 0 4px rgba(var(--main-rgb),.16);background:rgba(var(--fg-rgb),.05)}
+.af-ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--subtle);transition:color .2s;pointer-events:none;display:flex}
+.af:focus-within .af-ic{color:var(--text)}
+.af-l{position:absolute;left:44px;top:50%;transform:translateY(-50%);font-size:14.5px;color:var(--subtle);pointer-events:none;transition:transform .2s var(--ease),font-size .2s var(--ease),color .2s;transform-origin:left}
+.af input:focus~.af-l,.af input:not(:placeholder-shown)~.af-l{top:13px;transform:none;font-size:11.5px;color:var(--muted)}
+.af-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:34px;height:34px;border-radius:10px;color:var(--subtle)}
+.af-eye:hover{color:var(--text);background:rgba(var(--fg-rgb),.08)}
+.auth2-go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:14px;font-size:15px;font-weight:700;background:var(--text);color:var(--bg);box-shadow:0 12px 30px -12px rgba(var(--main-rgb),.7);transition:transform .25s var(--ease-out),box-shadow .25s,opacity .2s}
+.auth2-go:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 18px 36px -12px rgba(var(--main-rgb),.85)}
+.auth2-go:disabled{opacity:.6;cursor:not-allowed}
+.auth2-go .spin{border-top-color:currentColor}
+.auth2-foot{text-align:center;font-size:13px;color:var(--muted)}
+.auth2-foot button{color:var(--text);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.auth2-main .btn-discord{width:100%;justify-content:center;padding:13px;border-radius:14px}
+@media(max-width:760px){
+  .modal.auth{max-width:440px}
+  .auth2{grid-template-columns:1fr;min-height:0}.auth2-side{display:none}
+  .auth2-brand-m{display:flex}.auth2-main{padding:30px 22px 26px}
+}
