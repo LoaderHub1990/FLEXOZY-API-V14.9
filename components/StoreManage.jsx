@@ -386,7 +386,7 @@ function Design({ id }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [dev, setDev] = useState('desktop');
-  const push = useCallback(() => { if (site && frame.current?.contentWindow) frame.current.contentWindow.postMessage({ tnPreview: { color: site.color, theme: site.theme, skin: site.template } }, location.origin); }, [site]);
+  const push = useCallback(() => { if (site && frame.current?.contentWindow) frame.current.contentWindow.postMessage({ tnPreview: { color: site.color, theme: site.theme, skin: site.template, bg_image: site.bg_image || '', bg_dim: site.bg_dim || 0, colors: site.colors || {}, font: site.font || '', banner: site.banner || '' } }, location.origin); }, [site]);
   useEffect(() => { push(); }, [push]);
   if (err) return <Err m={err} />;
   if (!site) return <div className="muted">กำลังโหลด…</div>;
@@ -413,6 +413,35 @@ function Design({ id }) {
           <h3 style={{ margin: '18px 0 10px' }}>ธีมเริ่มต้น</h3>
           <div className="dz-seg">{[['dark', 'มืด'], ['light', 'สว่าง']].map(([k, l]) => <button type="button" key={k} className={site.theme === k ? 'on' : ''} onClick={() => up('theme', k)}>{l}</button>)}</div>
           <p className="subtle" style={{ fontSize: 12.5, marginTop: 8 }}>ลูกค้ายังสลับสว่าง/มืดและ TH/EN ได้เองที่หัวเว็บ — ค่านี้คือค่าที่เห็นครั้งแรก</p>
+        </div>
+        <div className="panel" style={{ display: 'grid', gap: 12 }}>
+          <h3>รูปภาพ</h3>
+          <div>
+            <label className="label" style={{ marginTop: 0 }}>รูปแบนเนอร์หน้าแรก (ลิงก์รูป)</label>
+            <input className="input" value={site.banner || ''} onChange={(e) => up('banner', e.target.value)} placeholder="https://… (เว้นว่าง = ไม่แสดงแบนเนอร์)" />
+            <div className="note" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.7 }}>
+              📐 <b>ขนาดที่ใช้: {site.template === 'studio' ? '2000 × 500 px (สัดส่วน 4:1)' : '1972 × 798 px (สัดส่วน ≈ 2.5:1)'}</b> · ไฟล์ JPG / PNG / WebP แนะนำ WebP ไม่เกิน ~500 KB<br />
+              วางข้อความและส่วนสำคัญไว้กลางภาพ เพราะบนมือถือขอบภาพอาจถูกตัดเล็กน้อย · ยังไม่ใส่ = หน้าร้านจะไม่มีแบนเนอร์
+            </div>
+          </div>
+          <div><label className="label" style={{ marginTop: 0 }}>ลิงก์รูปพื้นหลังร้าน</label><input className="input" value={site.bg_image || ''} onChange={(e) => up('bg_image', e.target.value)} placeholder="https://… เว้นว่าง = ไม่ใช้รูปพื้นหลัง" /></div>
+          <div><label className="label" style={{ marginTop: 0 }}>ความเข้มของฟิลเตอร์ทับรูปพื้นหลัง: {site.bg_dim || 0}%</label><input type="range" className="plain" min="0" max="90" step="5" value={site.bg_dim || 0} onChange={(e) => up('bg_dim', Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--text)' }} /><p className="subtle" style={{ fontSize: 12.5 }}>เพิ่มเพื่อให้ตัวอักษรอ่านง่ายบนรูปที่สว่างหรือลายเยอะ</p></div>
+        </div>
+        <div className="panel" style={{ display: 'grid', gap: 12 }}>
+          <div className="row"><h3>สีขั้นสูง</h3><button type="button" className="btn btn-sm" onClick={() => up('colors', { bg: '', surface: '', text: '', border: '' })}>รีเซ็ต</button></div>
+          <p className="subtle" style={{ fontSize: 12.5 }}>ปรับสีพื้นหลัง การ์ด ตัวอักษร และเส้นขอบ (ไม่ตั้ง = ใช้สีมาตรฐานของแบบ) มีผลกับธีมเริ่มต้นของร้าน ({site.theme === 'light' ? 'สว่าง' : 'มืด'})</p>
+          {[['bg', 'พื้นหลังหน้าเว็บ'], ['surface', 'พื้นการ์ด/กล่อง'], ['text', 'ตัวอักษรหลัก'], ['border', 'เส้นขอบ']].map(([k, l]) => (
+            <div key={k} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" className="plain" value={(site.colors || {})[k] || '#888888'} onChange={(e) => up('colors', { ...(site.colors || {}), [k]: e.target.value })} style={{ width: 44, height: 38, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'none', padding: 2, cursor: 'pointer', opacity: (site.colors || {})[k] ? 1 : 0.4 }} />
+              <span style={{ flex: 1, fontSize: 14 }}>{l}</span>
+              <code className="subtle" style={{ fontSize: 12 }}>{(site.colors || {})[k] || 'ค่าเริ่มต้น'}</code>
+              {(site.colors || {})[k] && <button type="button" className="btn btn-sm" onClick={() => up('colors', { ...(site.colors || {}), [k]: '' })} aria-label="ล้าง">×</button>}
+            </div>
+          ))}
+          <label className="label" style={{ marginTop: 6 }}>ฟอนต์</label>
+          <select className="input" value={site.font || ''} onChange={(e) => up('font', e.target.value)}>
+            <option value="">ตามแบบหน้าร้าน</option><option value="kanit">Kanit</option><option value="prompt">Prompt</option><option value="noto">Noto Sans Thai</option>
+          </select>
         </div>
         <Err m={msg?.t === 'err' ? msg.m : ''} />{msg?.t === 'ok' && <div className="msg ok">{msg.m}</div>}
         <button className="btn btn-primary" onClick={onSave} disabled={busy}>{busy ? <span className="spin" /> : 'บันทึกดีไซน์'}</button>

@@ -33,6 +33,13 @@ export const GET = route(async (req) => {
     const { rows } = await q('SELECT id,product_name,qty,total,delivered,created_at FROM t_orders WHERE rental_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 50', [r.id, u.id]);
     return json({ rows: rows.map((x) => ({ ...x, total: Number(x.total) })) });
   }
+  if (sp.has('topups')) {
+    const u = await needUser(r);
+    const { rows } = await q('SELECT id,amount,status,created_at FROM t_topups WHERE rental_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 50', [r.id, u.id]);
+    const list = rows.map((x) => ({ ...x, amount: Number(x.amount) }));
+    const ok = list.filter((x) => x.status === 'credited');
+    return json({ rows: list, summary: { total: ok.reduce((a, x) => a + x.amount, 0), count: ok.length } });
+  }
   return json({ ...(await getCatalog(r.id, { demo: r.demo })), me: await getTUser(r) });
 });
 
@@ -124,6 +131,15 @@ export const POST = route(async (req) => {
     return json({ ok: true, amount, balance });
   }
 
+  if (act === 'password') {
+    const next = str(b.next, { min: 8, max: 72, name: 'รหัสผ่านใหม่' });
+    const row = await one('SELECT pass_hash FROM t_users WHERE id=$1 AND rental_id=$2', [me.id, r.id]);
+    if (!row || !(await tCompare(String(b.current || '').slice(0, 72), row.pass_hash))) throw new HttpError(401, 'รหัสผ่านเดิมไม่ถูกต้อง');
+    await q('UPDATE t_users SET pass_hash=$1 WHERE id=$2', [await tHash(next), me.id]);
+    await q('DELETE FROM t_sessions WHERE user_id=$1', [me.id]);
+    await tCreateSession(r, me.id);
+    return json({ ok: true });
+  }
   if (act === 'coupon') { // ดูส่วนลดล่วงหน้า (ไม่ตัดสิทธิ์)
     const p = await one('SELECT price FROM t_products WHERE id=$1 AND rental_id=$2 AND active', [int(b.productId, { min: 1, name: 'สินค้า' }), r.id]);
     if (!p) throw new HttpError(404, 'ไม่พบสินค้านี้');

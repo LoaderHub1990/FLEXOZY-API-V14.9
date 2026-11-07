@@ -110,3 +110,42 @@ html:has(.tsk[data-theme="light"]) body.tenant-body{background:#f6f6f7}
 .tsk .lsw i{background:var(--ac)}
 .tsk .lsw[data-lang="th"] span:first-of-type,.tsk .lsw[data-lang="en"] span:last-of-type{color:var(--on-ac)}
 @media(max-width:1100px){.tsk .nav-d .nav-right .btn:not(.btn-white):not(.btn-sm){display:none}}
+
+/* ---------- รูปพื้นหลังร้าน (ตั้งได้ในหลังบ้าน) ---------- */
+.tsk-bg{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none}
+.tsk-bg::after{content:"";position:absolute;inset:0;background:rgba(var(--bg-rgb),var(--dim,0))}
+.tsk-bg~.tsk-glow{opacity:.5}
+
+/* Studio — โครงร้านคลาสสิก: ม่วง · Kanit · การ์ดมุม 15px · หมวดหมู่เป็นแถวสินค้า */
+.tsk[data-skin="studio"]{font-family:'Kanit',var(--font)}
+.tsk[data-skin="studio"][data-theme="light"]{--bg:#f6f4fa;--surface:#fff;--surface-2:#f4f1fa;--surface-3:#ebe6f5;--border:#e8e8ee;--border-strong:#dcdce6;--text:#1c1528;--muted:#6c6c7a}
+.tsk[data-skin="studio"][data-theme="dark"]{--bg:#0e0b14;--surface:#16121f;--surface-2:#1d1829;--surface-3:#262034;--border:#262232;--border-strong:#332e42}
+.tsk[data-skin="studio"] .tsk-glow{display:none}
+.tsk[data-skin="studio"] :is(.fcard,.pcard,.cat,.panel,.stat,.tk,.modal,.banner,.btn,.filter,.input){border-radius:15px;box-shadow:none}
+.tsk[data-skin="studio"] .nav-d{border-radius:15px;background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 4px 18px -6px rgba(0,0,0,.18)}
+.tsk[data-skin="studio"] .nav-d::before{display:none}
+.tsk[data-skin="studio"] .nav-links{background:none;border:0;padding:0}
+.tsk[data-skin="studio"] .nav-m{border-radius:15px!important;background:var(--surface)!important}
+.tsk[data-skin="studio"] .banner{aspect-ratio:4/1;border-color:var(--border-strong)}
+.tsk[data-skin="studio"] .banner-ph{padding:clamp(14px,3vw,30px);gap:8px}
+.tsk[data-skin="studio"] .banner-ph h1{font-size:clamp(24px,5vw,48px);background:none;color:var(--ac);-webkit-text-fill-color:currentColor;animation:none;letter-spacing:-.02em}
+.tsk[data-skin="studio"] .banner-ph::before{opacity:.6}
+@media(max-width:600px){.tsk[data-skin="studio"] .banner{aspect-ratio:auto;min-height:200px}}
+.tsk[data-skin="studio"] .cat{display:block;height:auto}
+.tsk[data-skin="studio"] .cat-lines{display:none}
+.tsk[data-skin="studio"] .cat-img{position:relative;aspect-ratio:164/45;height:auto}
+.tsk[data-skin="studio"] .cat-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tsk[data-skin="studio"] .cat-body{position:static;background:none;padding:12px 14px 14px}
+.tsk[data-skin="studio"] .cat-body,.tsk[data-skin="studio"] .cat-body h3{color:var(--text)}
+.tsk[data-skin="studio"] .cat-count{color:var(--muted)}
+.tsk[data-skin="studio"] .cat-go{background:rgba(var(--ac-rgb),.14);color:var(--ac);-webkit-backdrop-filter:none;backdrop-filter:none}
+.tsk[data-skin="studio"] .cat:hover .cat-go{background:var(--ac);color:var(--on-ac)}
+.tsk[data-skin="studio"] .grid,.tsk[data-skin="studio"] .feat{grid-template-columns:repeat(2,1fr);gap:14px}
+@media(min-width:768px){.tsk[data-skin="studio"] .grid,.tsk[data-skin="studio"] .feat{grid-template-columns:repeat(4,1fr)}}
+.tsk[data-skin="studio"] .sec-ic{border-radius:10px;box-shadow:none;background:rgba(var(--ac-rgb),.14);border-color:rgba(var(--ac-rgb),.35);color:var(--ac)}
+.tsk[data-skin="studio"] .sh{border-bottom-color:var(--border)}
+.tsk[data-skin="studio"] .price{color:var(--ac)}
+
+.tsk .banner:has(>img){min-height:0!important;aspect-ratio:986/399!important}
+.tsk[data-skin="studio"] .banner:has(>img){aspect-ratio:4/1!important}
+.tsk .banner>img{width:100%;height:100%;object-fit:cover;display:block}

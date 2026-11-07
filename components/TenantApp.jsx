@@ -41,9 +41,22 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
   const theme = pv?.theme || theme1;
   const skin = pv?.skin || skin0;
   const pc = pv?.color ? hexRgb(pv.color) : null;
-  const vars = pc ? { '--ac': pv.color, '--ac-rgb': pc, '--on-ac': onCol(pc) } : vars0;
+  const acVars = pc ? { '--ac': pv.color, '--ac-rgb': pc, '--on-ac': onCol(pc) } : vars0;
+  const has = (k) => pv && k in pv;
+  const eff = { bg_image: has('bg_image') ? pv.bg_image : shop0.bg_image, bg_dim: has('bg_dim') ? pv.bg_dim : shop0.bg_dim, colors: has('colors') ? pv.colors : shop0.colors, font: has('font') ? pv.font : shop0.font, banner: has('banner') ? pv.banner : shop0.banner };
+  const cl = eff.colors || {};
+  const ownerTheme = pv?.theme || shop0.owner_theme;
+  const ov = {};
+  if (theme === ownerTheme) { // สีที่เจ้าของร้านกำหนดเอง ใช้กับธีมที่เป็นค่าเริ่มต้นของร้าน (อีกธีมใช้สีมาตรฐานของแบบ)
+    if (hexRgb(cl.bg)) { ov['--bg'] = cl.bg; ov['--bg-rgb'] = hexRgb(cl.bg); }
+    if (hexRgb(cl.surface)) { ov['--surface'] = cl.surface; ov['--surface-2'] = `color-mix(in srgb, ${cl.surface} 93%, ${cl.text || '#808080'})`; ov['--surface-3'] = `color-mix(in srgb, ${cl.surface} 86%, ${cl.text || '#808080'})`; }
+    if (hexRgb(cl.text)) { ov['--text'] = cl.text; ov['--fg-rgb'] = hexRgb(cl.text); ov['--muted'] = `color-mix(in srgb, ${cl.text} 62%, transparent)`; }
+    if (hexRgb(cl.border)) { ov['--border'] = cl.border; ov['--border-strong'] = cl.border; }
+  }
+  const FONTS = { kanit: "'Kanit',sans-serif", prompt: "'Prompt',sans-serif", noto: "'Noto Sans Thai',sans-serif" };
+  const vars = { ...acVars, ...ov, ...(FONTS[eff.font] ? { fontFamily: FONTS[eff.font] } : {}), '--dim': (Number(eff.bg_dim) || 0) / 100 };
+  const shop = lang === 'en' ? { ...shop0, title: shop0.title_en || shop0.title, tagline: shop0.tagline_en || shop0.tagline, about: shop0.about_en || shop0.about, announce: shop0.announce_en || shop0.announce, banner: eff.banner } : { ...shop0, banner: eff.banner };
   const t = useMemo(() => makeT(lang), [lang]);
-  const shop = useMemo(() => (lang === 'en' ? { ...shop0, title: shop0.title_en || shop0.title, tagline: shop0.tagline_en || shop0.tagline, about: shop0.about_en || shop0.about, announce: shop0.announce_en || shop0.announce } : shop0), [lang, shop0]);
   const [data, setData] = useState(initial);
   const [route, setRoute] = useState({ seg: [], q: new URLSearchParams() });
   const [modal, setModal] = useState(null); // {t:'auth',mode} | {t:'contact'} | {t:'buy',p,qty}
@@ -97,6 +110,7 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
   return (
     <TT.Provider value={t}>
     <div className="tsk" data-skin={skin} data-theme={theme} lang={lang} style={vars} ref={root}>
+      {eff.bg_image && <div className="tsk-bg" style={{ backgroundImage: `url("${String(eff.bg_image).replace(/"/g, '%22')}")` }} aria-hidden="true" />}
       <i className="tsk-glow" aria-hidden="true" />
       <header className="header">
         <nav className="nav-d">
@@ -130,7 +144,7 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
         {page === 'store' ? <StorePage data={data} q={route.q} />
           : page === 'p' ? <ProductPage data={data} id={Number(route.seg[1])} me={me} onAuth={() => authOpen('login')} onBuy={(p, qty) => setModal({ t: 'buy', p, qty })} />
           : page === 'account' ? (me ? <AccountPage sub={sub} me={me} demo={demo} canTopup={shop.canTopup} tab0={route.seg[1]} onChange={reload} say={say} /> : <NeedLogin onAuth={() => authOpen('login')} />)
-          : <Home data={data} shop={shop} now={now} lang={lang} onAuth={() => authOpen('register')} me={me} />}
+          : <Home data={data} shop={shop} now={now} lang={lang} skin={skin} onAuth={() => authOpen('register')} me={me} />}
       </div></main>
 
       <footer className="footer">
@@ -223,7 +237,7 @@ function AuthBox({ sub, mode0, shop, onDone }) {
 
 const Img = ({ src, name, cls }) => src ? <img src={src} alt={name} loading="lazy" /> : <div className={'ph ' + (cls || '')}>{(name || '?').slice(0, 1)}</div>;
 
-function Home({ data, shop, now, lang, onAuth, me }) {
+function Home({ data, shop, now, lang, skin, onAuth, me }) {
   const t = useTT();
   const featured = useMemo(() => [...data.products].sort((a, b) => b.sold - a.sold).slice(0, 5), [data.products]);
   const rec = data.recent;
@@ -232,18 +246,12 @@ function Home({ data, shop, now, lang, onAuth, me }) {
   const st = [['users', t('ผู้ใช้งานทั้งหมด'), data.stats.users], ['box', t('สินค้าพร้อมขาย'), data.stats.products], ['bag', t('ขายแล้วทั้งหมด'), data.stats.sold]];
   return (
     <div className="wrap">
-      <section className="banner rv in" aria-label={shop.title}>
-        <div className="banner-ph">
-          <span className="banner-chip"><i />{t('เปิดให้บริการ')}</span>
-          <h1>{shop.title}</h1>
-          {shop.tagline && <p>{shop.tagline}</p>}
-          <div className="banner-cta">
-            <a href="#/store" className="btn btn-primary">{t('เลือกซื้อสินค้า')}</a>
-            {me ? <a href="#/account/topup" className="btn">{t('+ เติมเงิน')}</a> : <button className="btn" onClick={onAuth}>{t('สมัครสมาชิก')}</button>}
-          </div>
-        </div>
-        <i className="banner-edge" aria-hidden="true" />
-      </section>
+      {shop.banner && (
+        <section className="banner rv in" aria-label={shop.title}>
+          <img src={shop.banner} alt={shop.title} width="986" height="399" decoding="async" fetchPriority="high" />
+          <i className="banner-edge" aria-hidden="true" />
+        </section>
+      )}
 
       {shop.announce && (
         <div className="annc rv in" role="status">
@@ -290,7 +298,19 @@ function Home({ data, shop, now, lang, onAuth, me }) {
         </div>
       </section>
 
-      {featured.length > 0 && (
+      {skin === 'studio' ? data.categories.filter((c) => data.products.some((p) => p.category_id === c.id)).map((c) => {
+        const list = data.products.filter((p) => p.category_id === c.id);
+        return (
+          <section className="section" key={c.id}>
+            <div className="sh rv in">
+              <div className="sec-head"><span className="sec-ic"><Icon n="box" size={18} /></span><div><h2 className="sec-title">{t(c.name)}</h2><p className="sub" style={{ margin: 0 }}>{list.length} {t('รายการ')}</p></div></div>
+              <a href={`#/store?c=${c.id}`} className="sh-more">{t('ดูทั้งหมด')} <Icon n="arrow" size={14} /></a>
+            </div>
+            <div className="grid">{list.slice(0, 8).map((p, i) => <PCard key={p.id} p={p} i={i} />)}</div>
+          </section>
+        );
+      }) : null}
+      {skin !== 'studio' && featured.length > 0 && (
         <section className="section">
           <div className="sh rv in"><div><div className="sh-eye">{shop.title}</div><h2>{t('สินค้าแนะนำ')}</h2></div><a href="#/store" className="sh-more">{t('ดูทั้งหมด')} <Icon n="arrow" size={14} /></a></div>
           <div className="feat">
@@ -311,6 +331,21 @@ function Home({ data, shop, now, lang, onAuth, me }) {
   );
 }
 
+function PCard({ p, i }) {
+  const t = useTT();
+  return (
+    <a href={`#/p/${p.id}`} className="pcard rv in" style={{ '--i': i % 8 }}>
+      <div className="pcard-img"><Img src={p.image} name={p.name} />{p.stock === 0 && <span className="badge-out">{t('สินค้าหมด')}</span>}</div>
+      <div className="pcard-body">
+        <div className="pcard-name">{t(p.name)}</div>
+        <div className="price">{baht(p.price)}<small>฿</small></div>
+        <div className="stock">{p.stock === null ? t('ส่งทันที') : <>{t('คงเหลือ')} <b>{p.stock}</b></>}</div>
+        <span className={'btn btn-sm ' + (p.stock === null || p.stock > 0 ? 'btn-primary' : '')} style={p.stock === 0 ? { opacity: 0.5 } : null}>{p.stock === null || p.stock > 0 ? t('ซื้อเลย') : t('สินค้าหมด')}</span>
+      </div>
+    </a>
+  );
+}
+
 function StorePage({ data, q }) {
   const t = useTT();
   const cid = Number(q.get('c')) || 0;
@@ -325,17 +360,7 @@ function StorePage({ data, q }) {
       </div>
       {list.length === 0 ? <div className="empty">{t('ยังไม่มีสินค้าในหมวดนี้')}</div> : (
         <div className="grid">
-          {list.map((p, i) => (
-            <a key={p.id} href={`#/p/${p.id}`} className="pcard rv in" style={{ '--i': i % 8 }}>
-              <div className="pcard-img"><Img src={p.image} name={p.name} />{p.stock === 0 && <span className="badge-out">{t('สินค้าหมด')}</span>}</div>
-              <div className="pcard-body">
-                <div className="pcard-name">{t(p.name)}</div>
-                <div className="price">{baht(p.price)}<small>฿</small></div>
-                <div className="stock">{p.stock === null ? t('ส่งทันที') : <>{t('คงเหลือ')} <b>{p.stock}</b></>}</div>
-                <span className={'btn btn-sm ' + (p.stock === null || p.stock > 0 ? 'btn-primary' : '')} style={p.stock === 0 ? { opacity: 0.5 } : null}>{p.stock === null || p.stock > 0 ? 'ซื้อเลย' : 'สินค้าหมด'}</span>
-              </div>
-            </a>
-          ))}
+          {list.map((p, i) => <PCard key={p.id} p={p} i={i} />)}
         </div>
       )}
     </div>
@@ -412,43 +437,140 @@ function BuyConfirm({ sub, p, qty, me, onClose, onBought, nav }) {
 
 function NeedLogin({ onAuth }) { const t = useTT(); return <div className="wrap"><div className="empty"><p style={{ marginBottom: 14 }}>{t('กรุณาเข้าสู่ระบบก่อน')}</p><button className="btn btn-primary" onClick={onAuth}>{t('เข้าสู่ระบบ')}</button></div></div>; }
 
+const TOPUP_ST = { credited: ['ok', 'เติมแล้ว'], review: ['warn', 'รอตรวจสอบ'], redeemed: ['warn', 'รอตรวจสอบ'], failed: ['bad', 'ไม่สำเร็จ'], pending: ['', 'กำลังดำเนินการ'] };
+
 function AccountPage({ sub, me, demo, canTopup, tab0, onChange, say }) {
   const t = useTT();
-  const [tab, setTab] = useState(tab0 === 'orders' ? 'orders' : 'topup');
-  const [link, setLink] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
-  const [orders, setOrders] = useState(null);
-  useEffect(() => { setTab(tab0 === 'orders' ? 'orders' : 'topup'); }, [tab0]);
-  useEffect(() => { if (tab === 'orders') call('GET', `/api/tstore?sub=${encodeURIComponent(sub)}&orders=1`).then((d) => setOrders(d.rows)).catch(() => setOrders([])); }, [tab, sub]);
-  async function topup(e) { e.preventDefault(); setErr(''); setBusy(true); try { const r = await call('POST', '/api/tstore', { sub, action: 'topup', voucher: link }); say(`${t('เติมเงินสำเร็จ')} +${baht(r.amount)} ฿`); setLink(''); onChange(); } catch (x) { setErr(x.message); } finally { setBusy(false); } }
+  const [tab, setTab] = useState(['orders', 'security'].includes(tab0) ? tab0 : 'topup');
+  useEffect(() => { setTab(['orders', 'security'].includes(tab0) ? tab0 : 'topup'); }, [tab0]);
+  const T = [['topup', 'เติมเงิน'], ['orders', 'ประวัติการสั่งซื้อ'], ['security', 'ความปลอดภัย']];
   return (
     <div className="wrap">
-      <div className="page-h rv in"><div><div className="crumb"><a href="#/">{t('หน้าหลัก')}</a>/<span>{t('บัญชีของฉัน')}</span></div><h1>{t('บัญชีของฉัน')}</h1></div></div>
-      <div className="panel rv in" style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}><span className="muted">{t('ยอดคงเหลือ')}</span><b style={{ fontSize: 32 }}>{baht(me.balance)} ฿</b><span className="subtle" style={{ marginLeft: 'auto' }}>{me.username}</span></div>
-      <div className="tabs" style={{ maxWidth: 360 }}><button className={tab === 'topup' ? 'on' : ''} onClick={() => setTab('topup')}>{t('เติมเงิน')}</button><button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>{t('ประวัติการสั่งซื้อ')}</button></div>
-      {tab === 'topup' ? (
-        <div className="panel" style={{ maxWidth: 560 }}>
-          <h3 style={{ marginBottom: 4 }}>{t('🧧 เติมเงินด้วยซองอั่งเปา TrueMoney')}</h3>
-          {canTopup || demo ? (
-            <form onSubmit={topup}>
-              {demo && <div className="note" style={{ margin: '10px 0' }}>{t('🧪 ร้านทดลอง: วางลิงก์ซองรูปแบบใดก็ได้ จะได้เงินเดโม 100 ฿ ต่อครั้ง ไม่มีเงินจริง')}</div>}
-              <ol className="muted" style={{ fontSize: 13.5, lineHeight: 1.8, margin: '10px 0 14px', paddingLeft: 18 }}><li>{t('สร้างซองอั่งเปาใน TrueMoney Wallet (จำนวน 1 คน)')}</li><li>{t('ใส่ยอดที่ต้องการเติม แล้วคัดลอกลิงก์ซอง')}</li><li>{t('วางลิงก์ด้านล่างแล้วกดยืนยัน — เติมเข้ายอดคงเหลือทันที')}</li></ol>
-              <input className="input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://gift.truemoney.com/campaign/?v=..." inputMode="url" autoCapitalize="none" spellCheck={false} required />
-              {err && <div className="msg err">{t(err)}</div>}
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || !link.trim()}>{busy ? <span className="spin" /> : t('ยืนยันเติมเงิน')}</button>
-            </form>
-          ) : <div className="note" style={{ marginTop: 10 }}>{t('ร้านนี้ยังไม่เปิดรับเติมเงิน กรุณาติดต่อเจ้าของร้าน')}</div>}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: 10, maxWidth: 720 }}>
-          {orders === null ? <div className="muted">{t('กำลังโหลด…')}</div> : orders.length === 0 ? <div className="empty">{t('ยังไม่มีออเดอร์')}</div> : orders.map((o) => (
-            <div className="panel" key={o.id} style={{ padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><b>{t(o.product_name)} × {o.qty}</b><b>{baht(o.total)} ฿</b></div>
-              <div className="subtle" style={{ fontSize: 13, margin: '2px 0 8px' }}>#{o.id} · {dt(o.created_at)}</div>
-              <pre className="codebox" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 160, overflow: 'auto' }}>{o.delivered}</pre>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="page-h">
+        <div><h1>{t('สวัสดี,')} {me.username}</h1><div className="muted">{t('บัญชีของฉัน')}</div></div>
+        <div className="panel" style={{ padding: '12px 20px' }}><span className="muted" style={{ fontSize: 13 }}>{t('ยอดเงินคงเหลือ')}</span><div className="big" style={{ fontSize: 28 }}>{baht(me.balance)} ฿</div></div>
+      </div>
+      <div className="atabs">{T.map(([k, l]) => <button key={k} className={'filter' + (tab === k ? ' on' : '')} onClick={() => { setTab(k); history.replaceState(null, '', '#/account/' + k); }}>{t(l)}</button>)}</div>
+      {tab === 'topup' && <TopupTab sub={sub} me={me} demo={demo} canTopup={canTopup} onChange={onChange} say={say} />}
+      {tab === 'orders' && <OrdersTab sub={sub} />}
+      {tab === 'security' && <SecurityTab sub={sub} />}
     </div>
+  );
+}
+
+function TopupTab({ sub, me, demo, canTopup, onChange, say }) {
+  const t = useTT();
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const [link, setLink] = useState(''); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState(null); const [done, setDone] = useState(null);
+  const load = useCallback(() => call('GET', `/api/tstore?sub=${encodeURIComponent(sub)}&topups=1`).then(setData).catch(() => setData({ rows: [], summary: { total: 0, count: 0 } })), [sub]);
+  useEffect(() => { load(); }, [load]);
+  const enabled = canTopup || demo;
+  async function submit(e) {
+    e.preventDefault(); if (busy || !link.trim()) return; setBusy(true); setMsg(null);
+    try { const r = await call('POST', '/api/tstore', { sub, action: 'topup', voucher: link }); setDone({ amount: r.amount, balance: r.balance }); setLink(''); onChange(); load(); }
+    catch (x) { setMsg({ t: 'err', m: t(x.message) }); } finally { setBusy(false); }
+  }
+  if (open) {
+    return (
+      <div className="topup-rzx tp-page">
+        <button type="button" className="tp-back" onClick={() => { setOpen(false); setDone(null); setMsg(null); }}>← {t('กลับไปหน้าเลือกช่องทาง')}</button>
+        <div className="tp-card">
+          <div className="tp-card-head">
+            <span className="tp-card-ic tm"><img src="/uploads/payments/truemoney-gift.png" alt="" /></span>
+            <div><h2>{t('เติมเงินด้วยซองอั่งเปา (TrueMoney)')}</h2><p>{t('วางลิงก์ซองของขวัญทรูมันนี่เพื่อเติมยอดเงินเข้ากระเป๋าของคุณ')}</p></div>
+          </div>
+          <div className="tp-card-body">
+            {done ? (
+              <div className="tp-done">
+                <div className="tp-done-ico">✓</div><div className="tp-done-t">{t('เติมเงินสำเร็จ')}</div><div className="tp-done-amt">+{baht(done.amount)} ฿</div><div className="tp-done-s">{t('ยอดคงเหลือตอนนี้')} {baht(done.balance)} ฿</div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 18 }}><a className="btn btn-primary" href="#/store">{t('ไปเลือกซื้อสินค้า')}</a><button className="btn" onClick={() => setDone(null)}>{t('เติมเพิ่ม')}</button></div>
+              </div>
+            ) : (
+              <form className="tp-form" onSubmit={submit}>
+                {demo && <div className="msg" style={{ margin: 0 }}>🧪 {t('ร้านทดลอง: วางลิงก์ซองรูปแบบใดก็ได้ จะได้เงินเดโม 100 ฿ ต่อครั้ง ไม่มีเงินจริง')}</div>}
+                <label className="tp-label">{t('ลิงก์ซองของขวัญ')}</label>
+                <input className="input tp-input" autoFocus value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://gift.truemoney.com/campaign/?v=..." autoComplete="off" inputMode="url" autoCapitalize="none" spellCheck={false} />
+                <button className="btn btn-primary tp-go" disabled={busy || !link.trim()}>{busy ? <><span className="spin" /> {t('กำลังตรวจสอบ...')}</> : t('เติมเงิน')}</button>
+                {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
+                <ul className="tp-tips"><li>{t('สร้างซองแบบ')} <b>{t('ผู้รับ 1 คน')}</b> {t('เท่านั้น')}</li><li>{t('ซองที่รับแล้วใช้ซ้ำไม่ได้')}</li><li>{t('ได้เครดิตเท่ายอดที่ TrueMoney ยืนยันว่าเข้าจริง')}</li></ul>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const list = data?.rows || [];
+  return (
+    <div className="topup-rzx">
+      <div className="topup-rzx-head"><div className="topup-rzx-eyebrow">WALLET</div><h2>{t('ช่องทางเติมเงิน')}</h2><p>{t('เลือกช่องทางที่สะดวก ระบบจะแจ้งรายละเอียดก่อนทำรายการทุกครั้ง')}</p></div>
+      <div className="tp-stats">
+        <div className="tp-stat main"><span>{t('ยอดเงินคงเหลือ')}</span><b>{baht(me.balance)} ฿</b></div>
+        <div className="tp-stat"><span>{t('เติมแล้วทั้งหมด')}</span><b>{baht(data?.summary.total || 0)} ฿</b></div>
+        <div className="tp-stat"><span>{t('จำนวนครั้ง')}</span><b>{data?.summary.count || 0}</b></div>
+      </div>
+      <div className="topup-rzx-methods">
+        <button type="button" className={'topup-rzx-card' + (enabled ? '' : ' disabled')} disabled={!enabled} onClick={() => setOpen(true)}>
+          <span className="topup-rzx-icon"><img src="/uploads/payments/truemoney-gift.png" alt="TrueMoney" /></span>
+          <span className="topup-rzx-copy"><b>TrueMoney Gift</b><small>{t('เติมเงินผ่านซองทรูมันนี่')}</small>{enabled ? <em><i />{t('ไม่มีค่าธรรมเนียม')}</em> : <em className="off">{t('ร้านยังไม่เปิดรับเติมเงิน')}</em>}</span>
+          <span className="topup-rzx-arrow">↗</span>
+        </button>
+      </div>
+      <p className="topup-rzx-note">{t('กรุณาตรวจสอบยอดเงินให้ถูกต้องก่อนยืนยันรายการ')}</p>
+      <div className="topup-rzx-history">
+        <div className="topup-rzx-history-head"><h3>{t('ประวัติการเติมเงิน')}</h3></div>
+        <div className="tp-list">
+          {list.map((x) => { const st = TOPUP_ST[x.status] || ['', x.status]; return (
+            <div key={x.id} className="tp-item">
+              <span className="tp-ico tm">🎁</span>
+              <div className="tp-main"><div className="tp-row1"><b>TrueMoney</b><span className={'tag ' + st[0]}>{t(st[1])}</span></div><div className="tp-row2">{dt(x.created_at)} · #{x.id}</div></div>
+              <div className={'tp-amt' + (x.status === 'credited' ? ' plus' : ' dim')}>{x.status === 'credited' ? '+' : ''}{baht(x.amount)} ฿</div>
+            </div>); })}
+          {data && !list.length && <div className="tp-empty"><span>🪙</span>{t('ยังไม่มีรายการเติมเงิน')}<small>{t('เติมเงินครั้งแรกแล้วประวัติจะแสดงที่นี่')}</small></div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrdersTab({ sub }) {
+  const t = useTT();
+  const [orders, setOrders] = useState(null);
+  useEffect(() => { call('GET', `/api/tstore?sub=${encodeURIComponent(sub)}&orders=1`).then((d) => setOrders(d.rows)).catch(() => setOrders([])); }, [sub]);
+  if (orders === null) return <div className="muted">{t('กำลังโหลด…')}</div>;
+  if (!orders.length) return <div className="empty">{t('ยังไม่มีออเดอร์')}</div>;
+  return (
+    <div style={{ display: 'grid', gap: 12, maxWidth: 760 }}>
+      {orders.map((o) => (
+        <div className="panel" key={o.id}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><b>{t(o.product_name)} × {o.qty}</b><b>{baht(o.total)} ฿</b></div>
+          <div className="subtle" style={{ fontSize: 13, margin: '2px 0 10px' }}>#{o.id} · {dt(o.created_at)}</div>
+          <pre className="codebox" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 180, overflow: 'auto', margin: 0 }}>{o.delivered}</pre>
+          <button className="btn btn-sm" style={{ marginTop: 10 }} onClick={() => navigator.clipboard?.writeText(o.delivered)}>{t('คัดลอก')}</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SecurityTab({ sub }) {
+  const t = useTT();
+  const [f, setF] = useState({ current: '', next: '' }); const [msg, setMsg] = useState(null);
+  async function save(e) {
+    e.preventDefault(); setMsg(null);
+    try { await call('POST', '/api/tstore', { sub, action: 'password', ...f }); setF({ current: '', next: '' }); setMsg({ t: 'ok', m: t('เปลี่ยนรหัสผ่านแล้ว') }); }
+    catch (x) { setMsg({ t: 'err', m: t(x.message) }); }
+  }
+  return (
+    <form className="panel" style={{ maxWidth: 440 }} onSubmit={save}>
+      <h3 style={{ fontSize: 18 }}>{t('เปลี่ยนรหัสผ่าน')}</h3>
+      <label className="label">{t('รหัสผ่านเดิม')}</label>
+      <input className="input" type="password" autoComplete="current-password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} required />
+      <label className="label">{t('รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)')}</label>
+      <input className="input" type="password" autoComplete="new-password" minLength={8} value={f.next} onChange={(e) => setF({ ...f, next: e.target.value })} required />
+      {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
+      <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }}>{t('บันทึก')}</button>
+    </form>
   );
 }
