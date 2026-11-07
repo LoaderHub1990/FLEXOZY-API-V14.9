@@ -9,7 +9,7 @@ import Icon from './Icons';
 import { EXAMPLE_SUB, TEMPLATES, getTemplate } from '@/lib/templates';
 
 const clean = (v) => v.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
-const PERKS = ['ลิงก์ชื่อที่คุณตั้งเอง', 'แก้ไขหน้าเว็บได้เองตลอดเวลา', 'เปิดใช้งานทันทีหลังชำระเงิน', 'ต่ออายุได้ง่ายจากกระเป๋าเงิน'];
+const PERKS = [['store', 'ร้านค้าเต็มระบบ สมาชิก/เติมเงิน/ส่งสินค้าอัตโนมัติ'], ['dash', 'หลังบ้านจัดการสินค้า สต็อก ออเดอร์ โค้ดส่วนลด'], ['layers', 'ดีไซน์ 6 แบบ ปรับสีและธีมได้เอง'], ['ext', 'ลิงก์ชื่อที่คุณตั้งเอง เปิดใช้งานทันที']];
 
 /* ตัวอย่างเว็บจริง (ย่อส่วน) ใต้แพ็กเกจ — คลิกเพื่อเปิดดูเต็มหน้า */
 function Shot({ slug }) {
@@ -48,24 +48,31 @@ export function RentPlans({ plans, root, balance, loggedIn, initialTpl }) {
   const { openAuth } = useShell();
   const [sel, setSel] = useState(null);
   const [tpl, setTpl] = useState(TEMPLATES.some((x) => x.slug === initialTpl) ? initialTpl : TEMPLATES[0].slug);
+  const cur = getTemplate(tpl);
+  const best = plans.length ? plans.reduce((a, b) => (b.price / b.days < a.price / a.days ? b : a)) : null;
   return (
     <>
-      <h2 className="sec-h" style={{ marginTop: 26 }}>1. {t('เลือกแบบหน้าเว็บ')}</h2>
-      <p className="muted" style={{ fontSize: 14, margin: '4px 0 14px' }}>{t('กด “ดูตัวอย่าง” เพื่อเปิดเว็บตัวอย่างจริงของแต่ละแบบ')}</p>
-      <TemplatePicker value={tpl} onChange={setTpl} />
-      <h2 className="sec-h" style={{ marginTop: 34 }}>2. {t('เลือกแพ็กเกจ')}</h2>
       <div className="plans">
         {plans.map((p, i) => (
-          <div key={p.id} className={'plan rv' + (i === 0 ? ' pop' : '')} style={{ '--i': i }}>
-            {i === 0 && <span className="pill">{t('เริ่มต้น')}</span>}
+          <div key={p.id} className={'plan rv in' + (best && p.id === best.id && plans.length > 1 ? ' pop' : i === 0 && plans.length === 1 ? ' pop' : '')} style={{ '--i': i }}>
+            {(best && p.id === best.id) && <span className="pill">{plans.length > 1 ? t('คุ้มที่สุด') : t('เริ่มต้น')}</span>}
             <h3>{p.name}</h3>
             <div className="pr">{baht(p.price)}<small>฿ / {p.days} {t('วัน')}</small></div>
+            <div className="plan-per">≈ {(p.price / 100 / p.days).toFixed(2)} ฿ / {t('วัน')}</div>
             {p.description && <p className="muted" style={{ fontSize: 14 }}>{p.description}</p>}
-            <ul>{PERKS.map((x) => <li key={x}><Icon n="check" size={15} />{t(x)}</li>)}</ul>
-            <button className="btn btn-primary" onClick={() => (loggedIn ? setSel(p) : openAuth('login'))}>{t('สั่งซื้อ')}</button>
+            <ul>{PERKS.map(([ic, x]) => <li key={x}><span><Icon n={ic} size={14} /></span>{t(x)}</li>)}</ul>
+            <button className="btn btn-primary" onClick={() => (loggedIn ? setSel(p) : openAuth('login'))}>{t('สั่งซื้อ')} <Icon n="arrow" size={15} /></button>
           </div>
         ))}
         {plans.length === 0 && <div className="empty">—</div>}
+      </div>
+
+      <div className="rent-gal">
+        <div className="rent-gal-h">
+          <div><h2 className="sec-h">{t('เลือกแบบหน้าร้าน')}</h2><p className="muted" style={{ fontSize: 14, marginTop: 4 }}>{t('ทุกแบบคือร้านจริงเต็มระบบ ลองสมัคร เติมเงิน ซื้อของได้ที่หน้าตัวอย่าง')}</p></div>
+          <div className="rent-picked">{t('แบบที่เลือก')}: <b>{cur.name}</b></div>
+        </div>
+        <TemplatePicker value={tpl} onChange={setTpl} />
       </div>
       {sel && <OrderModal plan={sel} root={root} balance={balance} tpl={tpl} setTpl={setTpl} onClose={() => setSel(null)} />}
     </>
@@ -159,7 +166,7 @@ export function RentManage() {
   if (!d.rentals?.length) return <div className="empty"><p style={{ marginBottom: 14 }}>{t('ยังไม่มีเว็บที่เช่า')}</p><Link href="/rent" className="btn btn-primary">{t('เช่าเว็บเลย')}</Link></div>;
   return (
     <div className="my-rent">
-      {d.rentals.map((r) => <RentalCard key={r.id} r={r} root={d.root} onRenew={() => setRenew(r)} onSaved={load} />)}
+      {d.rentals.map((r) => <RentalCard key={r.id} r={r} root={d.root} onRenew={() => setRenew(r)} />)}
       {renew && <RenewModal r={renew} plans={d.plans} balance={d.balance} root={d.root} onClose={() => setRenew(null)} onDone={() => { setRenew(null); load(); }} />}
     </div>
   );
@@ -190,80 +197,24 @@ function RenewModal({ r, plans, balance, onClose, onDone }) {
   );
 }
 
-function RentalCard({ r, root, onRenew, onSaved }) {
+function RentalCard({ r, root, onRenew }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
-  const [s, setS] = useState({ title: '', tagline: '', about: '', logo: '', color: '#ffffff', theme: 'dark', template: 'aurora', pay_phone: '', pay_name: '', pay_note: '', links: [], items: [], ...r.site });
-  const [msg, setMsg] = useState(null);
-  const [busy, setBusy] = useState(false);
   const tag = TAG[r.status] || TAG.active;
-  const up = (k, v) => setS((o) => ({ ...o, [k]: v }));
-  const upList = (k, i, f, v) => setS((o) => ({ ...o, [k]: o[k].map((x, n) => (n === i ? { ...x, [f]: v } : x)) }));
-  async function save(e) {
-    e.preventDefault(); setMsg(null); setBusy(true);
-    try { await api('/api/rent', 'PUT', { rentalId: r.id, site: s }); setMsg({ t: 'ok', m: t('บันทึกแล้ว') }); onSaved(); }
-    catch (x) { setMsg({ t: 'err', m: x.message }); } finally { setBusy(false); }
-  }
+  const left = Math.ceil((new Date(r.expires_at) - Date.now()) / 86400000);
   return (
     <div className="rent-card rv in">
       <header>
         <div>
           <div style={{ fontWeight: 700, fontSize: 18 }}>{r.sub}.{root}</div>
-          <div className="subtle" style={{ fontSize: 13, marginTop: 2 }}>{r.plan_name} · {t('หมดอายุเมื่อ')} {fmtDate(r.expires_at)}</div>
+          <div className="subtle" style={{ fontSize: 13, marginTop: 2 }}>{r.plan_name} · {t('หมดอายุเมื่อ')} {fmtDate(r.expires_at)}{r.status === 'active' && left <= 7 && left > 0 ? ` · ${t('เหลือ')} ${left} ${t('วัน')}` : ''}</div>
         </div>
         <span className={'tag ' + tag[0]}>{t(tag[1])}</span>
       </header>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-        <a className="btn btn-sm" href={r.url} target="_blank" rel="noopener noreferrer">{t('เปิดเว็บ')} <Icon n="ext" size={13} /></a>
         <Link className="btn btn-sm btn-primary" href={`/rent/my/${r.id}`}>🛍 {t('จัดการร้าน')}</Link>
+        <a className="btn btn-sm" href={r.url} target="_blank" rel="noopener noreferrer">{t('เปิดเว็บ')} <Icon n="ext" size={13} /></a>
         <button className="btn btn-sm" onClick={onRenew}>{t('ต่ออายุ')}</button>
-        <button className="btn btn-sm" onClick={() => setOpen(!open)}>{open ? t('ซ่อน') : t('แก้ไขเว็บ')}</button>
       </div>
-      {open && (
-        <form onSubmit={save} style={{ marginTop: 18, display: 'grid', gap: 12 }}>
-          <div className="row2">
-            <div><label className="label" style={{ marginTop: 0 }}>{t('ชื่อเว็บ')}</label><input className="input" maxLength={40} value={s.title} onChange={(e) => up('title', e.target.value)} /></div>
-            <div><label className="label" style={{ marginTop: 0 }}>{t('คำโปรย')}</label><input className="input" maxLength={120} value={s.tagline} onChange={(e) => up('tagline', e.target.value)} /></div>
-          </div>
-          <div className="row2">
-            <div><label className="label" style={{ marginTop: 0 }}>Title (English, optional)</label><input className="input" maxLength={40} value={s.title_en || ''} onChange={(e) => up('title_en', e.target.value)} /></div>
-            <div><label className="label" style={{ marginTop: 0 }}>Tagline (English, optional)</label><input className="input" maxLength={120} value={s.tagline_en || ''} onChange={(e) => up('tagline_en', e.target.value)} /></div>
-          </div>
-          <div><label className="label" style={{ marginTop: 0 }}>{t('เกี่ยวกับ')}</label><textarea className="input" rows={3} maxLength={600} value={s.about} onChange={(e) => up('about', e.target.value)} />
-            <input className="input" style={{ marginTop: 8 }} maxLength={600} placeholder="About (English, optional)" value={s.about_en || ''} onChange={(e) => up('about_en', e.target.value)} /></div>
-          <div className="row2">
-            <div><label className="label" style={{ marginTop: 0 }}>{t('ลิงก์โลโก้ (https://...)')}</label><input className="input" value={s.logo} onChange={(e) => up('logo', e.target.value)} placeholder="https://..." /></div>
-            <div><label className="label" style={{ marginTop: 0 }}>{t('สีหลัก')}</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input type="color" className="plain" value={s.color} onChange={(e) => up('color', e.target.value)} style={{ width: 46, height: 42, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'none', padding: 2 }} />
-                <input className="input" value={s.color} onChange={(e) => up('color', e.target.value)} maxLength={7} />
-              </div></div>
-            <div><label className="label" style={{ marginTop: 0 }}>{t('แบบหน้าเว็บ')}</label>
-              <select className="input" value={s.template || 'aurora'} onChange={(e) => up('template', e.target.value)}>{TEMPLATES.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select></div>
-            <div><label className="label" style={{ marginTop: 0 }}>{t('ธีมหน้าเว็บ')}</label>
-              <select className="input" value={s.theme} onChange={(e) => up('theme', e.target.value)}><option value="dark">{t('มืด')}</option><option value="light">{t('สว่าง')}</option></select></div>
-          </div>
-          <div className="panel" style={{ padding: 14, display: 'grid', gap: 10 }}>
-            <b style={{ fontSize: 14 }}>🧧 {t('รับเงินด้วยซองอั่งเปา TrueMoney')}</b>
-            <div><label className="label" style={{ marginTop: 0 }}>{t('เบอร์ TrueMoney Wallet ของคุณ (10 หลัก)')}</label>
-              <input className="input" inputMode="numeric" maxLength={10} placeholder="0812345678" value={s.pay_phone || ''} onChange={(e) => up('pay_phone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
-            <p className="subtle" style={{ fontSize: 12.5 }}>{t('ใส่เบอร์แล้วหน้าเว็บจะมีช่อง “ชำระเงินด้วยซองอั่งเปา” ลูกค้าวางลิงก์ซองเพื่อเติมเงินเข้าร้านคุณ ระบบรับซองเข้าเบอร์นี้ทันทีและเติมยอดให้ลูกค้าอัตโนมัติ เงินเข้ากระเป๋า TrueMoney ของคุณโดยตรง')}</p>
-          </div>
-          <div className="chips-in">
-            <b style={{ fontSize: 14 }}>{t('ลิงก์ติดต่อ')}</b>
-            {s.links.map((l, i) => (
-              <div className="mini-row" key={i}>
-                <input className="input" placeholder={t('ชื่อปุ่ม')} maxLength={30} value={l.label} onChange={(e) => upList('links', i, 'label', e.target.value)} />
-                <input className="input" placeholder="https://..." value={l.url} onChange={(e) => upList('links', i, 'url', e.target.value)} />
-                <button type="button" className="btn btn-sm btn-danger" onClick={() => up('links', s.links.filter((_, n) => n !== i))}>{t('ลบ')}</button>
-              </div>
-            ))}
-            {s.links.length < 6 && <button type="button" className="btn btn-sm" style={{ justifySelf: 'start' }} onClick={() => up('links', [...s.links, { label: '', url: '' }])}>+ {t('เพิ่มลิงก์')}</button>}
-          </div>
-          {msg && <div className={'msg ' + msg.t}>{msg.m}</div>}
-          <button className="btn btn-primary" disabled={busy}>{busy ? <span className="spin" /> : t('บันทึก')}</button>
-        </form>
-      )}
     </div>
   );
 }

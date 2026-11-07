@@ -609,3 +609,54 @@ html .nav-d .nav-dash{background:rgba(var(--fg-rgb),.06);box-shadow:inset 0 0 0 
   .auth2{grid-template-columns:1fr;min-height:0}.auth2-side{display:none}
   .auth2-brand-m{display:flex}.auth2-main{padding:30px 22px 26px}
 }
+
+/* ---------- หลังบ้านผู้เช่า: กราฟแท่ง + หน้าดีไซน์ ---------- */
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:end;height:170px;padding-top:6px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;min-width:0}
+.bar i{display:block;width:100%;max-width:46px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--text),rgba(var(--fg-rgb),.35));transform-origin:bottom;animation:barUp .7s var(--ease-out) both}
+.bar b{font-size:11px;font-weight:600;color:var(--muted);min-height:14px}.bar span{font-size:11px;color:var(--subtle)}
+@keyframes barUp{from{transform:scaleY(.05);opacity:0}}
+.dz{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:980px){.dz{grid-template-columns:1fr}}
+.dz-ctl{display:grid;gap:14px}
+.dz-skins{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dz-skin{display:grid;gap:6px;padding:8px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);text-align:left;transition:border-color .2s,transform .25s var(--ease-out)}
+.dz-skin:hover{transform:translateY(-2px);border-color:var(--border-accent)}
+.dz-skin.on{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.dz-skin b{font-size:12.5px}
+.dz-sw{display:flex;align-items:center;gap:5px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--border)}
+.dz-sw i{width:13px;height:13px;border-radius:50%}
+.dz-pal{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dz-dot{aspect-ratio:1;border-radius:50%;border:2px solid var(--border-strong);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s}
+.dz-dot:hover{transform:scale(1.12)}.dz-dot.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text);transform:scale(1.05)}
+.dz-seg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:3px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-2)}
+.dz-seg button{padding:8px 18px;border-radius:999px;font-size:13.5px;color:var(--muted);transition:background .25s,color .25s}
+.dz-seg button.on{background:var(--text);color:var(--bg);font-weight:700}
+.dz-seg.sm button{padding:5px 12px;font-size:12.5px}
+.dz-pv{position:sticky;top:96px;border-radius:18px;border:1px solid var(--border);background:var(--surface);overflow:hidden}
+.dz-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted)}
+.dz-frame{display:grid;place-items:start center;padding:14px;background:repeating-conic-gradient(rgba(var(--fg-rgb),.04) 0 25%,transparent 0 50%) 0 0/20px 20px}
+.dz-frame iframe{width:100%;height:68vh;min-height:460px;border:1px solid var(--border);border-radius:12px;background:#000;transition:width .35s var(--ease-out)}
+.dz-frame.mobile iframe{width:390px;max-width:100%}
+
+
+/* ---------- หน้าเช่าเว็บ (จัดใหม่: แพ็กเกจอยู่บน แกลเลอรีอยู่ล่าง) ---------- */
+.rent-hero{position:relative;overflow:hidden;margin:6px 0 22px;padding:clamp(22px,4vw,38px);border-radius:26px;border:1px solid var(--border-strong);background:radial-gradient(70% 120% at 100% 0,rgba(var(--main-rgb),.16),transparent 60%),var(--surface)}
+.rent-hero h1{font-size:clamp(28px,5vw,46px);font-weight:800;letter-spacing:-.035em;line-height:1.1;margin-top:6px}
+.rent-hero p{color:var(--muted);margin-top:10px;max-width:640px;font-size:clamp(14px,2vw,16px)}
+.rent-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.rent-chips span{padding:6px 14px;border-radius:999px;font-size:13px;border:1px solid var(--border-strong);background:rgba(var(--fg-rgb),.04)}
+.rent-my{position:absolute;right:20px;top:20px}
+@media(max-width:640px){.rent-my{position:static;margin-top:14px}}
+.plans{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));margin-top:0}
+.plan{padding:26px}
+.plan .pr{font-size:clamp(40px,6vw,54px)}
+.plan-per{font-size:12.5px;color:var(--subtle);margin-top:-6px}
+.plan li{align-items:center}
+.plan li span{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:8px;background:rgba(var(--main-rgb),.12);color:var(--text)}
+.plan .btn{padding:14px;font-size:15px}
+.plan.pop{background:radial-gradient(100% 70% at 50% 0,rgba(var(--main-rgb),.12),transparent 70%),var(--surface)}
+.rent-gal{margin-top:40px}
+.rent-gal-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.rent-picked{padding:7px 16px;border-radius:999px;border:1px solid var(--border-strong);font-size:13.5px;color:var(--muted)}
+.rent-picked b{color:var(--text)}

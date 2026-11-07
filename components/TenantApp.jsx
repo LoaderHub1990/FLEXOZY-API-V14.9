@@ -16,6 +16,8 @@ const ago = (iso, now, lang) => {
   const d = Math.floor(h / 24); return en ? `${d} d ago` : `${d} วันที่แล้ว`;
 };
 const setCookie = (k, v) => { document.cookie = `${k}=${v};path=/;max-age=31536000;samesite=lax`; };
+const hexRgb = (c) => { const h = String(c || '').replace('#', ''); return /^[0-9a-f]{6}$/i.test(h) ? [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)).join(',') : null; };
+const onCol = (rgb) => { const [r, g, b] = rgb.split(',').map(Number); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#000' : '#fff'; };
 const TT = createContext(makeT('th'));
 const useTT = () => useContext(TT);
 
@@ -32,11 +34,16 @@ const parseHash = () => {
   return { seg, q: new URLSearchParams(qs || '') };
 };
 
-export default function TenantApp({ sub, demo, shop: shop0, initial, skin, theme: theme0, lang: lang0, vars, others }) {
+export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0, theme: theme0, lang: lang0, vars: vars0, others }) {
+  const [pv, setPv] = useState(null); // พรีวิวสดจากหลังบ้าน (postMessage) ใช้เฉพาะตอนฝังในหน้าตั้งค่า
   const [lang, setLang] = useState(lang0);
-  const [theme, setTheme] = useState(theme0);
+  const [theme1, setTheme] = useState(theme0);
+  const theme = pv?.theme || theme1;
+  const skin = pv?.skin || skin0;
+  const pc = pv?.color ? hexRgb(pv.color) : null;
+  const vars = pc ? { '--ac': pv.color, '--ac-rgb': pc, '--on-ac': onCol(pc) } : vars0;
   const t = useMemo(() => makeT(lang), [lang]);
-  const shop = useMemo(() => (lang === 'en' ? { ...shop0, title: shop0.title_en || shop0.title, tagline: shop0.tagline_en || shop0.tagline, about: shop0.about_en || shop0.about } : shop0), [lang, shop0]);
+  const shop = useMemo(() => (lang === 'en' ? { ...shop0, title: shop0.title_en || shop0.title, tagline: shop0.tagline_en || shop0.tagline, about: shop0.about_en || shop0.about, announce: shop0.announce_en || shop0.announce } : shop0), [lang, shop0]);
   const [data, setData] = useState(initial);
   const [route, setRoute] = useState({ seg: [], q: new URLSearchParams() });
   const [modal, setModal] = useState(null); // {t:'auth',mode} | {t:'contact'} | {t:'buy',p,qty}
@@ -45,6 +52,12 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin, theme
   const root = useRef(null);
   const me = data.me;
 
+  useEffect(() => {
+    if (!shop0.embed) return;
+    const h = (e) => { if (e.origin === location.origin && e.data && e.data.tnPreview) setPv(e.data.tnPreview); };
+    window.addEventListener('message', h);
+    return () => window.removeEventListener('message', h);
+  }, [shop0.embed]);
   useEffect(() => {
     const f = () => { setRoute(parseHash()); window.scrollTo({ top: 0 }); };
     setRoute(parseHash()); setNow(Date.now());
@@ -232,6 +245,12 @@ function Home({ data, shop, now, lang, onAuth, me }) {
         <i className="banner-edge" aria-hidden="true" />
       </section>
 
+      {shop.announce && (
+        <div className="annc rv in" role="status">
+          <div className="annc-tag"><Icon n="bell" size={15} /> {t('ประกาศ')}</div>
+          <div className="annc-run"><div className="annc-track">{[...Array(12)].map((_, i) => <span key={i} aria-hidden={i > 5 ? 'true' : undefined}>{shop.announce}</span>)}</div></div>
+        </div>
+      )}
       <section className="stats">
         {st.map(([ic, l, v], i) => (
           <div className="stat rv in" key={l}><div className="stat-ic"><Icon n={ic} /></div><div className="stat-tx"><div className="stat-l">{l}</div><div className="stat-v"><span className="num">{Number(v).toLocaleString('th-TH')}</span></div></div></div>
@@ -363,19 +382,31 @@ function ProductPage({ data, id, me, onAuth, onBuy }) {
 function BuyConfirm({ sub, p, qty, me, onClose, onBought, nav }) {
   const t = useTT();
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(''); const [res, setRes] = useState(null);
-  const total = p.price * qty;
-  async function buy() { setErr(''); setBusy(true); try { const r = await call('POST', '/api/tstore', { sub, action: 'buy', productId: p.id, qty }); setRes(r); onBought(); } catch (x) { setErr(x.message); } finally { setBusy(false); } }
+  const [code, setCode] = useState(''); const [cp, setCp] = useState(null); const [cerr, setCerr] = useState('');
+  const base = p.price * qty;
+  const total = cp ? cp.total : base;
+  async function applyCode() {
+    setCerr(''); setCp(null);
+    try { const r = await call('POST', '/api/tstore', { sub, action: 'coupon', productId: p.id, qty, code }); setCp({ ...r, code }); } catch (x) { setCerr(x.message); }
+  }
+  async function buy() { setErr(''); setBusy(true); try { const r = await call('POST', '/api/tstore', { sub, action: 'buy', productId: p.id, qty, coupon: cp ? cp.code : '' }); setRes(r); onBought(); } catch (x) { setErr(x.message); } finally { setBusy(false); } }
   if (res) return (
-    <div><h3>{t('✓ สั่งซื้อสำเร็จ')}</h3><p className="muted" style={{ margin: '6px 0 12px' }}>{t(res.name)} × {qty} · {baht(res.total)} ฿</p>
+    <div><h3>{t('✓ สั่งซื้อสำเร็จ')}</h3><p className="muted" style={{ margin: '6px 0 12px' }}>{t(res.name)} × {qty} · {baht(res.total)} ฿{res.discount > 0 && <> ({t('ส่วนลด')} {baht(res.discount)} ฿)</>}</p>
       <pre className="codebox" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 220, overflow: 'auto' }}>{res.items.join('\n')}</pre>
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}><button className="btn" style={{ flex: 1 }} onClick={() => navigator.clipboard?.writeText(res.items.join('\n'))}>{t('คัดลอก')}</button><button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { onClose(); nav('/account/orders'); }}>{t('ดูประวัติ')}</button></div>
       <p className="subtle" style={{ fontSize: 12.5, marginTop: 10 }}>{t('ยอดคงเหลือ')} {baht(res.balance)} ฿</p></div>
   );
   return (
     <div><h3>{t('ยืนยันการสั่งซื้อ')}</h3><p className="muted" style={{ fontSize: 14, margin: '6px 0 14px' }}>{t('ตรวจสอบรายการก่อนกดยืนยัน ระบบจะหักเงินและส่งสินค้าทันที')}</p>
-      <div className="cf-rows"><div><span>{t('สินค้า')}</span><b>{t(p.name)} × {qty}</b></div><div className="cf-total"><span>{t('ยอดที่ต้องชำระ')}</span><b>{baht(total)} ฿</b></div><div><span>{t('ยอดคงเหลือหลังซื้อ')}</span><b>{baht(Math.max(0, me.balance - total))} ฿</b></div></div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+        <input className="input" value={code} onChange={(e) => { setCode(e.target.value); setCp(null); }} placeholder={t('โค้ดส่วนลด (ถ้ามี)')} maxLength={30} />
+        <button className="btn" onClick={applyCode} disabled={!code.trim()}>{t('ใช้โค้ด')}</button>
+      </div>
+      {cerr && <div className="msg err" style={{ margin: '0 0 8px' }}>{t(cerr)}</div>}
+      {cp && <div className="msg ok" style={{ margin: '0 0 8px' }}>✓ {t('ลดไป')} {baht(cp.discount)} ฿</div>}
+      <div className="cf-rows"><div><span>{t('สินค้า')}</span><b>{t(p.name)} × {qty}</b></div>{cp && <div><span>{t('ส่วนลด')}</span><b>-{baht(cp.discount)} ฿</b></div>}<div className="cf-total"><span>{t('ยอดที่ต้องชำระ')}</span><b>{baht(total)} ฿</b></div><div><span>{t('ยอดคงเหลือหลังซื้อ')}</span><b>{baht(Math.max(0, me.balance - total))} ฿</b></div></div>
       {err && <div className="msg err">{t(err)}</div>}
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}><button className="btn" style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('ยกเลิก')}</button><button className="btn btn-primary" style={{ flex: 1 }} onClick={buy} disabled={busy}>{busy ? <span className="spin" /> : 'ยืนยันสั่งซื้อ'}</button></div></div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}><button className="btn" style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('ยกเลิก')}</button><button className="btn btn-primary" style={{ flex: 1 }} onClick={buy} disabled={busy || me.balance < total}>{busy ? <span className="spin" /> : t('ยืนยันสั่งซื้อ')}</button></div></div>
   );
 }
 

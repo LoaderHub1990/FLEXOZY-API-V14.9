@@ -52,7 +52,7 @@ export default async function Tenant({ params, searchParams }) {
   }
   const [catalog, me] = await Promise.all([getCatalog(r.id, { demo }), getTUser(r)]);
   const shop = {
-    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', title_en: s.title_en || '', tagline_en: s.tagline_en || '', about_en: s.about_en || '', logo: s.logo || '', root: ROOT_DOMAIN, embed,
+    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', announce: s.announce || '', announce_en: s.announce_en || '', title_en: s.title_en || '', tagline_en: s.tagline_en || '', about_en: s.about_en || '', logo: s.logo || '', root: ROOT_DOMAIN, embed,
     links: (s.links || []).map((l) => ({ label: l.label, url: safeHref(l.url) })), canTopup: validPhone(s.pay_phone),
   };
   return <TenantApp sub={r.sub} demo={demo} shop={shop} initial={{ ...catalog, me }} skin={tpl} theme={theme} lang={lang} vars={vars} others={TEMPLATES.map((x) => ({ slug: x.slug, name: x.name }))} />;

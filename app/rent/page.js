@@ -12,14 +12,13 @@ export default async function RentPage({ searchParams }) {
   const [{ t }, user, plans] = await Promise.all([getT(), getUser(), getRentPlans()]);
   return (
     <div className="wrap">
-      <div className="page-h rv rv-up">
-        <div>
-          <div className="crumb"><a href="/">{t('หน้าหลัก')}</a>/<span>{t('เช่าเว็บ')}</span></div>
-          <h1>{t('เลือกแพ็กเกจเช่าเว็บ')}</h1>
-          <p className="muted" style={{ marginTop: 6 }}>{t('ตั้งชื่อเว็บ ชำระเงินจากกระเป๋าเงิน ใช้งานได้ทันที')} · <span className="rent-url">{EXAMPLE_SUB}.{ROOT_DOMAIN}</span></p>
-        </div>
-        {user && <a className="btn" href="/rent/my">{t('เว็บที่เช่าไว้')}</a>}
-      </div>
+      <section className="rent-hero rv rv-up">
+        <div className="crumb"><a href="/">{t('หน้าหลัก')}</a>/<span>{t('เช่าเว็บ')}</span></div>
+        <h1>{t('เช่าร้านของคุณเอง')}</h1>
+        <p>{t('ได้ร้านออนไลน์เต็มระบบ พร้อมหลังบ้านและลิงก์ชื่อที่คุณตั้งเอง')} <span className="rent-url">{EXAMPLE_SUB}.{ROOT_DOMAIN}</span></p>
+        <div className="rent-chips"><span>⚡ {t('เปิดร้านทันที')}</span><span>🧧 {t('รับเงินด้วยซองอั่งเปา')}</span><span>🎨 {t('ปรับสี/ธีมเอง')}</span><span>🌐 TH / EN</span></div>
+        {user && <a className="btn rent-my" href="/rent/my">{t('เว็บที่เช่าไว้')}</a>}
+      </section>
       <RentPlans plans={plans.map((p) => ({ ...p, price: Number(p.price) }))} root={ROOT_DOMAIN} balance={user ? Number(user.balance) : 0} loggedIn={!!user} initialTpl={sp?.tpl} />
     </div>
   );

@@ -10,6 +10,19 @@ import { activeRental, getTUser, tCreateSession, tDestroySession, tHash, tCompar
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+
+/** ตรวจโค้ดส่วนลด (ต้องเรียกในธุรกรรมที่ล็อกแถวคูปองแล้วถ้าจะใช้จริง) → { coupon, discount } */
+async function applyCoupon(c, r, userId, code, total, lock) {
+  const cp = (await c.query(`SELECT * FROM t_coupons WHERE rental_id=$1 AND upper(code)=upper($2) ${lock ? 'FOR UPDATE' : ''}`, [r.id, code])).rows[0];
+  if (!cp || !cp.active) throw new HttpError(400, 'โค้ดส่วนลดไม่ถูกต้อง');
+  if (cp.expires_at && new Date(cp.expires_at) < new Date()) throw new HttpError(400, 'โค้ดส่วนลดหมดอายุแล้ว');
+  if (cp.max_uses > 0 && cp.used >= cp.max_uses) throw new HttpError(400, 'โค้ดส่วนลดถูกใช้ครบแล้ว');
+  if (total < Number(cp.min_total)) throw new HttpError(400, `ต้องมียอดสั่งซื้อขั้นต่ำ ${(Number(cp.min_total) / 100).toLocaleString('th-TH')} ฿`);
+  if (cp.once_per_user && (await c.query('SELECT 1 FROM t_coupon_uses WHERE coupon_id=$1 AND user_id=$2', [cp.id, userId])).rows.length) throw new HttpError(400, 'คุณใช้โค้ดนี้ไปแล้ว');
+  const discount = cp.kind === 'percent' ? Math.floor((total * Number(cp.value)) / 100) : Math.min(Number(cp.value), total);
+  return { cp, discount };
+}
+
 const needUser = async (r) => { const u = await getTUser(r); if (!u) throw new HttpError(401, 'กรุณาเข้าสู่ระบบก่อน'); return u; };
 
 export const GET = route(async (req) => {
@@ -111,6 +124,15 @@ export const POST = route(async (req) => {
     return json({ ok: true, amount, balance });
   }
 
+  if (act === 'coupon') { // ดูส่วนลดล่วงหน้า (ไม่ตัดสิทธิ์)
+    const p = await one('SELECT price FROM t_products WHERE id=$1 AND rental_id=$2 AND active', [int(b.productId, { min: 1, name: 'สินค้า' }), r.id]);
+    if (!p) throw new HttpError(404, 'ไม่พบสินค้านี้');
+    const qty = int(b.qty ?? 1, { min: 1, max: 20, name: 'จำนวน' });
+    const total = Number(p.price) * qty;
+    const { discount } = await applyCoupon({ query: (t, a) => q(t, a) }, r, me.id, String(b.code || '').trim().slice(0, 40), total, false);
+    return json({ ok: true, discount, total: total - discount });
+  }
+
   // ---------- ซื้อสินค้า (หักเงิน + ส่งของในธุรกรรมเดียว) ----------
   if (act === 'buy') {
     const pid = int(b.productId, { min: 1, name: 'สินค้า' });
@@ -120,21 +142,24 @@ export const POST = route(async (req) => {
       if (!u || u.banned) throw new HttpError(403, 'บัญชีนี้ถูกระงับ');
       const p = (await c.query('SELECT * FROM t_products WHERE id=$1 AND rental_id=$2 AND active FOR UPDATE', [pid, r.id])).rows[0];
       if (!p) throw new HttpError(404, 'ไม่พบสินค้านี้');
-      const total = Number(p.price) * qty;
+      let total = Number(p.price) * qty, discount = 0, couponCode = '', cpRow = null;
+      const code = String(b.coupon || '').trim().slice(0, 40);
+      if (code) { const a = await applyCoupon(c, r, u.id, code, total, true); discount = a.discount; total -= discount; cpRow = a.cp; couponCode = cpRow.code; }
       if (Number(u.balance) < total) throw new HttpError(402, 'ยอดเงินคงเหลือไม่พอ กรุณาเติมเงินก่อน');
       let items = [], stockIds = [];
       if (p.unlimited) {
         items = Array.from({ length: qty }, () => (r.demo ? `DEMO-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}` : (p.delivery_text || 'ขอบคุณที่สั่งซื้อ')));
       } else {
-        const st = (await c.query('SELECT id,content FROM t_stock WHERE product_id=$1 AND NOT sold ORDER BY id LIMIT $2 FOR UPDATE SKIP LOCKED', [p.id, qty])).rows;
+        const st = (await c.query('SELECT id,content FROM t_stock WHERE product_id=$1 AND NOT sold ORDER BY ' + (p.pick_random ? 'random()' : 'id') + ' LIMIT $2 FOR UPDATE SKIP LOCKED', [p.id, qty])).rows;
         if (st.length < qty) throw new HttpError(409, st.length ? `สินค้าเหลือแค่ ${st.length} ชิ้น` : 'สินค้าหมด');
         items = st.map((x) => x.content); stockIds = st.map((x) => x.id);
       }
       const nb = (await c.query('UPDATE t_users SET balance=balance-$1 WHERE id=$2 RETURNING balance', [total, u.id])).rows[0].balance;
-      const o = (await c.query('INSERT INTO t_orders(rental_id,user_id,username,product_id,product_name,qty,total,delivered) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id', [r.id, u.id, u.username, p.id, p.name, qty, total, items.join('\n')])).rows[0];
+      const o = (await c.query('INSERT INTO t_orders(rental_id,user_id,username,product_id,product_name,qty,total,delivered,coupon,discount) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id', [r.id, u.id, u.username, p.id, p.name, qty, total, items.join('\n'), couponCode, discount])).rows[0];
       if (stockIds.length) await c.query('UPDATE t_stock SET sold=TRUE,order_id=$1 WHERE id = ANY($2::int[])', [o.id, stockIds]);
       await c.query('UPDATE t_products SET sold=sold+$1 WHERE id=$2', [qty, p.id]);
-      return { orderId: o.id, items, total, balance: Number(nb), name: p.name };
+      if (cpRow) { await c.query('UPDATE t_coupons SET used=used+1 WHERE id=$1', [cpRow.id]); await c.query('INSERT INTO t_coupon_uses(coupon_id,user_id) VALUES($1,$2)', [cpRow.id, u.id]); }
+      return { orderId: o.id, items, total, discount, balance: Number(nb), name: p.name };
     });
     return json({ ok: true, ...out });
   }
