@@ -3,17 +3,12 @@ import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int } from '@/lib/util';
 import { safeImage } from '@/lib/util';
 import { requireUser } from '@/lib/auth';
-import { tHash } from '@/lib/tstore';
+import { tHash, ownerRental } from '@/lib/tstore';
 import { siteUrl } from '@/lib/rent';
 
 export const dynamic = 'force-dynamic';
 
-async function owned(id) {
-  const user = await requireUser();
-  const r = await one('SELECT id,sub,site,expires_at,plan_name,status FROM rentals WHERE id=$1 AND user_id=$2 AND NOT demo', [id, user.id]);
-  if (!r) throw new HttpError(404, 'ไม่พบร้านนี้');
-  return r;
-}
+const owned = (id) => ownerRental(id);
 const satang = (v, { min = 0, max = 100_000_000, name = 'ยอดเงิน' } = {}) => {
   const n = Math.round(Number(v) * 100);
   if (!Number.isFinite(n) || n < min || n > max) throw new HttpError(400, `${name}ไม่ถูกต้อง`);
@@ -26,11 +21,11 @@ export const GET = route(async (req) => {
   const view = sp.get('view') || 'overview';
   if (view === 'overview') {
     const x = await one(`SELECT
-      (SELECT count(*) FROM t_users WHERE rental_id=$1)::int AS customers,
+      (SELECT count(*) FROM t_users WHERE rental_id=$1 AND NOT is_owner)::int AS customers,
       (SELECT count(*) FROM t_orders WHERE rental_id=$1)::int AS orders,
       (SELECT coalesce(sum(total),0) FROM t_orders WHERE rental_id=$1)::bigint AS revenue,
       (SELECT coalesce(sum(total),0) FROM t_orders WHERE rental_id=$1 AND created_at > now() - interval '24 hours')::bigint AS revenue_today,
-      (SELECT coalesce(sum(balance),0) FROM t_users WHERE rental_id=$1)::bigint AS balances,
+      (SELECT coalesce(sum(balance),0) FROM t_users WHERE rental_id=$1 AND NOT is_owner)::bigint AS balances,
       (SELECT count(*) FROM t_products WHERE rental_id=$1)::int AS products,
       (SELECT count(*) FROM t_stock WHERE rental_id=$1 AND NOT sold)::int AS stock,
       (SELECT coalesce(sum(amount),0) FROM t_topups WHERE rental_id=$1 AND status='credited')::bigint AS topups,
@@ -59,7 +54,7 @@ export const GET = route(async (req) => {
   const term = (sp.get('q') || '').trim().slice(0, 60);
   const like = `%${term.replace(/[%_\\]/g, '\\$&')}%`;
   if (view === 'orders') return json({ rows: (await q(`SELECT id,username,product_name,qty,total,discount,coupon,delivered,created_at FROM t_orders WHERE rental_id=$1 AND ($2='' OR username ILIKE $3 OR product_name ILIKE $3 OR id::text=$2) ORDER BY id DESC LIMIT 150`, [r.id, term, like])).rows.map((o) => ({ ...o, total: Number(o.total), discount: Number(o.discount) })) });
-  if (view === 'customers') return json({ rows: (await q(`SELECT u.id,u.username,u.balance,u.banned,u.created_at,(SELECT coalesce(sum(total),0) FROM t_orders o WHERE o.user_id=u.id)::bigint AS spent FROM t_users u WHERE u.rental_id=$1 AND ($2='' OR u.username ILIKE $3) ORDER BY u.id DESC LIMIT 200`, [r.id, term, like])).rows.map((u) => ({ ...u, balance: Number(u.balance), spent: Number(u.spent) })) });
+  if (view === 'customers') return json({ rows: (await q(`SELECT u.id,u.username,u.balance,u.banned,u.created_at,(SELECT coalesce(sum(total),0) FROM t_orders o WHERE o.user_id=u.id)::bigint AS spent FROM t_users u WHERE u.rental_id=$1 AND NOT u.is_owner AND ($2='' OR u.username ILIKE $3) ORDER BY u.id DESC LIMIT 200`, [r.id, term, like])).rows.map((u) => ({ ...u, balance: Number(u.balance), spent: Number(u.spent) })) });
   if (view === 'topups') return json({ rows: (await q(`SELECT t.id,t.voucher_code,t.amount,t.status,t.error_code,t.created_at,u.username FROM t_topups t LEFT JOIN t_users u ON u.id=t.user_id WHERE t.rental_id=$1 ORDER BY t.id DESC LIMIT 100`, [r.id])).rows.map((t) => ({ ...t, amount: Number(t.amount) })) });
   throw new HttpError(400, 'view ไม่ถูกต้อง');
 });
@@ -79,6 +74,19 @@ export const POST = route(async (req) => {
       await q('INSERT INTO t_categories(rental_id,name,image,sort) VALUES($1,$2,$3,$4)', [r.id, name, image, n.n]);
     }
     return json({ ok: true });
+  }
+  if (op === 'image.upload') { // รับรูปที่ย่อ/บีบมาจากเบราว์เซอร์แล้ว เก็บในฐานข้อมูล แล้วเสิร์ฟผ่าน /api/timg/<id>
+    const m = String(b.data || '').match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!m) throw new HttpError(400, 'รองรับเฉพาะไฟล์ JPG / PNG / WebP');
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.length > 900 * 1024) throw new HttpError(400, 'ไฟล์ใหญ่เกินไป (สูงสุด ~900 KB หลังบีบอัด)');
+    const hex = buf.subarray(0, 12).toString('hex');
+    const okMagic = (m[1] === 'image/jpeg' && hex.startsWith('ffd8ff')) || (m[1] === 'image/png' && hex.startsWith('89504e47')) || (m[1] === 'image/webp' && hex.startsWith('52494646') && hex.slice(16, 24) === '57454250');
+    if (!okMagic) throw new HttpError(400, 'ไฟล์รูปไม่ถูกต้อง');
+    const st = await one('SELECT count(*)::int AS n, coalesce(sum(bytes),0)::bigint AS total FROM t_images WHERE rental_id=$1', [r.id]);
+    if (st.n >= 120 || Number(st.total) > 60 * 1024 * 1024) throw new HttpError(400, 'พื้นที่รูปเต็มแล้ว กรุณาลบรูปเก่า');
+    const img = await one('INSERT INTO t_images(rental_id,mime,bytes,data) VALUES($1,$2,$3,$4) RETURNING id', [r.id, m[1], buf.length, buf]);
+    return json({ ok: true, url: `/api/timg/${img.id}` });
   }
   if (op === 'cat.delete') { await q('DELETE FROM t_categories WHERE id=$1 AND rental_id=$2', [int(b.id, { min: 1 }), r.id]); return json({ ok: true }); }
 

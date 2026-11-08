@@ -3,9 +3,58 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, baht, fmtDate } from './api';
-import { Modal, useShell } from './Shell';
+import { createPortal } from 'react-dom';
+import { useShell } from './Shell';
+import { resizeImage, IMG_SIZE } from './imgtools';
 import Icon from './Icons';
 import { TEMPLATES } from '@/lib/templates';
+
+// โมดัลที่วาดเข้าไปในโครงหน้าร้าน (.tsk) เพื่อให้ได้สกิน/สีของร้าน — ถ้าอยู่หน้าเว็บหลักจะวาดที่ body
+function Modal({ onClose, children, wide }) {
+  const [host, setHost] = useState(null);
+  useEffect(() => { setHost(document.querySelector('.tsk') || document.body); }, []);
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', k);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', k); document.body.style.overflow = prev; };
+  }, [onClose]);
+  if (!host) return null;
+  return createPortal(
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={'modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" style={{ position: 'relative' }}>
+        <button className="btn btn-sm x" onClick={onClose} aria-label="ปิด"><Icon n="x" size={16} /></button>
+        {children}
+      </div>
+    </div>, host);
+}
+
+/** ช่องรูปภาพ: วางลิงก์ หรือกดอัปโหลดจากเครื่อง (ย่อ/ครอปให้ได้ขนาดที่ใช้จริงอัตโนมัติ) */
+function ImageField({ id, label, value, onChange, size, hint }) {
+  const ref = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  async function pick(e) {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+    setBusy(true); setErr('');
+    try { const data = await resizeImage(f, { w: size.w, h: size.h, mode: size.mode || 'cover' }); const r = await post(id, 'image.upload', { data }); onChange(r.url); }
+    catch (x) { setErr(x.message); } finally { setBusy(false); }
+  }
+  return (
+    <div>
+      <label className="label" style={{ marginTop: 0 }}>{label}</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input className="input" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="วางลิงก์ https://… หรือกดอัปโหลด" />
+        <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={pick} />
+        <button type="button" className="btn" onClick={() => ref.current.click()} disabled={busy} style={{ whiteSpace: 'nowrap' }}>{busy ? <span className="spin" /> : '⬆ อัปโหลด'}</button>
+        {value && <button type="button" className="btn" onClick={() => onChange('')} aria-label="ลบรูป">×</button>}
+      </div>
+      {value && <img src={value} alt="" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 120, borderRadius: 10, border: '1px solid var(--border)', objectFit: 'cover' }} />}
+      <p className="subtle" style={{ fontSize: 12.5, marginTop: 6 }}>📐 ขนาดที่ใช้ <b>{size.label}</b> · JPG / PNG / WebP — ระบบย่อให้พอดีอัตโนมัติ{hint ? ' · ' + hint : ''}</p>
+      <Err m={err} />
+    </div>
+  );
+}
 
 const post = (rental, op, data) => api('/api/rent/store', 'POST', { rental, op, ...data });
 const get = (rental, view, extra = '') => api(`/api/rent/store?rental=${rental}&view=${view}${extra}`);
@@ -31,16 +80,21 @@ const TABS = [
   ['topups', 'เติมเงิน', Topups, 'wallet', 'ตรวจรายการเติมเงินและเติมให้ลูกค้า', 'การเงิน'],
   ['customers', 'ลูกค้า', Customers, 'users', 'ปรับยอด ระงับ รีเซ็ตรหัสผ่าน', 'การเงิน'],
   ['design', 'ดีไซน์ & โทนสี', Design, 'layers', 'เลือกแบบหน้าร้าน ปรับสีหลักและธีมพร้อมพรีวิวสด', 'ตั้งค่า'],
-  ['settings', 'ตั้งค่าร้าน', Settings, 'cog', 'ชื่อร้าน ประกาศ ช่องทางติดต่อ และเบอร์รับเงิน TrueMoney', 'ตั้งค่า'],
+  ['settings', 'ตั้งค่าเว็บ', Settings, 'cog', 'ข้อมูลร้าน โลโก้ ประกาศ SEO ปิด/เปิดร้าน ช่องทางติดต่อ และเบอร์รับเงิน TrueMoney', 'ตั้งค่า'],
 ];
 
 export default function StoreManage({ id }) {
-  const { openAuth } = useShell();
+  const shell = useShell();
+  return <StoreManageInner id={id} openAuth={shell?.openAuth} />;
+}
+
+/** embedded = ฝังในเว็บของร้านเอง (ล็อกอินเจ้าของร้านบนโดเมนร้าน) */
+export function StoreManageInner({ id, embedded, openAuth, rootUrl, onExit }) {
   const [tab, setTab] = useState('overview');
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState('');
   useEffect(() => { get(id, 'overview').then(setInfo).catch((e) => setErr(e.message)); }, [id]);
-  if (err) return <div className="panel" style={{ maxWidth: 480 }}><div className="msg err">{err}</div>{err.includes('เข้าสู่ระบบ') && <button className="btn btn-primary" style={{ marginTop: 10 }} onClick={() => openAuth('login')}>เข้าสู่ระบบ</button>}<p style={{ marginTop: 10 }}><Link href="/rent/my" className="btn btn-sm">← เว็บที่เช่าไว้</Link></p></div>;
+  if (err) return <div className="panel" style={{ maxWidth: 480 }}><div className="msg err">{err}</div>{err.includes('เข้าสู่ระบบ') && <button className="btn btn-primary" style={{ marginTop: 10 }} onClick={() => openAuth?.('login')}>เข้าสู่ระบบ</button>}<p style={{ marginTop: 10 }}><Link href="/rent/my" className="btn btn-sm">← เว็บที่เช่าไว้</Link></p></div>;
   const cur = TABS.find((t) => t[0] === tab);
   const Cur = cur[2];
   const groups = [...new Set(TABS.map((t) => t[5]))];
@@ -55,15 +109,19 @@ export default function StoreManage({ id }) {
           </div>
         ))}
         <div className="adm-grp">ลิงก์ด่วน</div>
-        {info && <a className="adm-nav adm-link" href={info.url} target="_blank" rel="noopener noreferrer"><Icon n="store" size={17} />ดูหน้าร้าน<Icon n="ext" size={13} className="ext" /></a>}
-        <Link className="adm-nav adm-link" href="/rent/my"><Icon n="server" size={17} />เว็บที่เช่าไว้ / ต่ออายุ</Link>
+        {embedded
+          ? <button type="button" className="adm-nav adm-link" onClick={onExit}><Icon n="store" size={17} />กลับหน้าร้าน</button>
+          : info && <a className="adm-nav adm-link" href={info.url} target="_blank" rel="noopener noreferrer"><Icon n="store" size={17} />ดูหน้าร้าน<Icon n="ext" size={13} className="ext" /></a>}
+        {embedded
+          ? <a className="adm-nav adm-link" href={`${rootUrl}/rent/my`} target="_blank" rel="noopener noreferrer"><Icon n="server" size={17} />ต่ออายุ / จัดการแพ็กเกจ<Icon n="ext" size={13} className="ext" /></a>
+          : <Link className="adm-nav adm-link" href="/rent/my"><Icon n="server" size={17} />เว็บที่เช่าไว้ / ต่ออายุ</Link>}
       </aside>
       <section className="adm-main">
         <div className="adm-top">
           <div><h1>{cur[1]}</h1><p>{cur[4]}</p></div>
-          <div className="adm-top-act">{info && <a className="btn btn-sm btn-primary" href={info.url} target="_blank" rel="noopener noreferrer"><Icon n="store" size={15} /> หน้าร้าน</a>}</div>
+          <div className="adm-top-act">{embedded ? <button type="button" className="btn btn-sm btn-primary" onClick={onExit}><Icon n="store" size={15} /> หน้าร้าน</button> : info && <a className="btn btn-sm btn-primary" href={info.url} target="_blank" rel="noopener noreferrer"><Icon n="store" size={15} /> หน้าร้าน</a>}</div>
         </div>
-        <div className="adm-body"><Cur key={tab} id={id} go={setTab} info={info} /></div>
+        <div className="adm-body"><Cur key={tab} id={id} go={setTab} info={info} embedded={embedded} /></div>
       </section>
     </div>
   );
@@ -113,7 +171,7 @@ function Overview({ id, go }) {
         <QA ic="box" t="จัดการสินค้า / สต็อก" d="เพิ่ม แก้ไข เติมสต็อก" to="products" />
         <QA ic="ticket" t="โค้ดส่วนลด" d="สร้างและจำกัดสิทธิ์" to="coupons" />
         <QA ic="layers" t="ดีไซน์ & โทนสี" d="เลือกแบบ ปรับสีหลัก" to="design" />
-        <QA ic="cog" t="ตั้งค่าร้าน" d="ประกาศ ติดต่อ เบอร์รับเงิน" to="settings" />
+        <QA ic="cog" t="ตั้งค่าเว็บ" d="ประกาศ ติดต่อ เบอร์รับเงิน" to="settings" />
       </div>
     </>
   );
@@ -180,7 +238,7 @@ function ProductModal({ id, cats, p, onClose, onSaved }) {
           <div><label className="label">หมวดหมู่</label><select className="input" value={f.category_id} onChange={(e) => up('category_id', e.target.value)}><option value="">— ไม่มี —</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           <div><label className="label">ราคา (บาท)</label><input className="input" type="number" min="0" step="0.01" value={f.price} onChange={(e) => up('price', e.target.value)} required /></div>
         </div>
-        <label className="label">ลิงก์รูปสินค้า (ไม่บังคับ)</label><input className="input" value={f.image} onChange={(e) => up('image', e.target.value)} placeholder="https://…" />
+        <div style={{ marginTop: 12 }}><ImageField id={id} label="รูปสินค้า (ไม่บังคับ)" value={f.image} onChange={(v) => up('image', v)} size={IMG_SIZE.product} /></div>
         <label className="label">รายละเอียด</label><textarea className="input" rows={3} value={f.description} onChange={(e) => up('description', e.target.value)} maxLength={600} />
         <label className="label">รูปแบบการส่งสินค้า</label>
         <select className="input" value={f.mode} onChange={(e) => up('mode', e.target.value)}>
@@ -236,13 +294,30 @@ function Categories({ id }) {
         <div className="panel" key={c.id + ':' + c.name + c.image} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, flexWrap: 'wrap' }}>
           {c.image ? <img src={c.image} alt="" style={{ width: 52, height: 36, objectFit: 'cover', borderRadius: 8 }} /> : <span className="subtle" style={{ width: 52, fontSize: 11 }}>ไม่มีรูป</span>}
           <input className="input" defaultValue={c.name} maxLength={40} style={{ flex: '1 1 140px' }} onBlur={(e) => e.target.value.trim() && e.target.value !== c.name && run(post(id, 'cat.save', { id: c.id, name: e.target.value, image: c.image }))} />
-          <input className="input" defaultValue={c.image} placeholder="ลิงก์รูปหมวดหมู่ https://…" style={{ flex: '2 1 200px' }} onBlur={(e) => e.target.value !== c.image && run(post(id, 'cat.save', { id: c.id, name: c.name, image: e.target.value }))} />
+          <CatImage id={id} c={c} run={run} />
           <button className="btn btn-sm" disabled={i === 0} onClick={() => run(post(id, 'cat.move', { id: c.id, dir: 'up' }))}>↑</button>
           <button className="btn btn-sm" disabled={i === rows.length - 1} onClick={() => run(post(id, 'cat.move', { id: c.id, dir: 'down' }))}>↓</button>
           <button className="btn btn-sm btn-danger" onClick={() => confirm(`ลบหมวด “${c.name}” ? (สินค้าในหมวดจะไม่หาย)`) && run(post(id, 'cat.delete', { id: c.id }))}>ลบ</button>
         </div>
       ))}
       {rows && rows.length === 0 && <Empty>ยังไม่มีหมวดหมู่</Empty>}
+    </div>
+  );
+}
+
+function CatImage({ id, c, run }) {
+  const ref = useRef(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  async function pick(e) {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return; setBusy(true); setErr('');
+    try { const data = await resizeImage(f, { w: IMG_SIZE.category.w, h: IMG_SIZE.category.h }); const r = await post(id, 'image.upload', { data }); await run(post(id, 'cat.save', { id: c.id, name: c.name, image: r.url })); }
+    catch (x) { setErr(x.message); } finally { setBusy(false); }
+  }
+  return (
+    <div style={{ flex: '2 1 220px', display: 'flex', gap: 6, alignItems: 'center' }}>
+      <input className="input" defaultValue={c.image} placeholder="ลิงก์รูป หรือกดอัปโหลด" onBlur={(e) => e.target.value !== c.image && run(post(id, 'cat.save', { id: c.id, name: c.name, image: e.target.value }))} />
+      <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={pick} />
+      <button type="button" className="btn btn-sm" onClick={() => ref.current.click()} disabled={busy} title={'ขนาดที่ใช้ ' + IMG_SIZE.category.label}>{busy ? <span className="spin" /> : '⬆'}</button>
+      {err && <span className="msg err" style={{ margin: 0, padding: '2px 8px' }}>{err}</span>}
     </div>
   );
 }
@@ -380,7 +455,7 @@ function useSite(id) {
   return { site, setSite, meta, err, save };
 }
 
-function Design({ id }) {
+function Design({ id, embedded }) {
   const { site, setSite, meta, err, save } = useSite(id);
   const frame = useRef(null);
   const [msg, setMsg] = useState(null);
@@ -414,17 +489,10 @@ function Design({ id }) {
           <div className="dz-seg">{[['dark', 'มืด'], ['light', 'สว่าง']].map(([k, l]) => <button type="button" key={k} className={site.theme === k ? 'on' : ''} onClick={() => up('theme', k)}>{l}</button>)}</div>
           <p className="subtle" style={{ fontSize: 12.5, marginTop: 8 }}>ลูกค้ายังสลับสว่าง/มืดและ TH/EN ได้เองที่หัวเว็บ — ค่านี้คือค่าที่เห็นครั้งแรก</p>
         </div>
-        <div className="panel" style={{ display: 'grid', gap: 12 }}>
+        <div className="panel" style={{ display: 'grid', gap: 14 }}>
           <h3>รูปภาพ</h3>
-          <div>
-            <label className="label" style={{ marginTop: 0 }}>รูปแบนเนอร์หน้าแรก (ลิงก์รูป)</label>
-            <input className="input" value={site.banner || ''} onChange={(e) => up('banner', e.target.value)} placeholder="https://… (เว้นว่าง = ไม่แสดงแบนเนอร์)" />
-            <div className="note" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.7 }}>
-              📐 <b>ขนาดที่ใช้: {site.template === 'studio' ? '2000 × 500 px (สัดส่วน 4:1)' : '1972 × 798 px (สัดส่วน ≈ 2.5:1)'}</b> · ไฟล์ JPG / PNG / WebP แนะนำ WebP ไม่เกิน ~500 KB<br />
-              วางข้อความและส่วนสำคัญไว้กลางภาพ เพราะบนมือถือขอบภาพอาจถูกตัดเล็กน้อย · ยังไม่ใส่ = หน้าร้านจะไม่มีแบนเนอร์
-            </div>
-          </div>
-          <div><label className="label" style={{ marginTop: 0 }}>ลิงก์รูปพื้นหลังร้าน</label><input className="input" value={site.bg_image || ''} onChange={(e) => up('bg_image', e.target.value)} placeholder="https://… เว้นว่าง = ไม่ใช้รูปพื้นหลัง" /></div>
+          <ImageField id={id} label="รูปแบนเนอร์หน้าแรก" value={site.banner} onChange={(v) => up('banner', v)} size={site.template === 'studio' ? IMG_SIZE.bannerStudio : IMG_SIZE.banner} hint="วางข้อความ/ส่วนสำคัญไว้กลางภาพ เพราะมือถืออาจตัดขอบ" />
+          <ImageField id={id} label="รูปพื้นหลังร้าน" value={site.bg_image} onChange={(v) => up('bg_image', v)} size={IMG_SIZE.bg} />
           <div><label className="label" style={{ marginTop: 0 }}>ความเข้มของฟิลเตอร์ทับรูปพื้นหลัง: {site.bg_dim || 0}%</label><input type="range" className="plain" min="0" max="90" step="5" value={site.bg_dim || 0} onChange={(e) => up('bg_dim', Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--text)' }} /><p className="subtle" style={{ fontSize: 12.5 }}>เพิ่มเพื่อให้ตัวอักษรอ่านง่ายบนรูปที่สว่างหรือลายเยอะ</p></div>
         </div>
         <div className="panel" style={{ display: 'grid', gap: 12 }}>
@@ -448,7 +516,7 @@ function Design({ id }) {
       </div>
       <div className="dz-pv">
         <div className="dz-bar"><span>พรีวิวสด</span><div className="dz-seg sm">{[['desktop', 'คอม'], ['mobile', 'มือถือ']].map(([k, l]) => <button key={k} type="button" className={dev === k ? 'on' : ''} onClick={() => setDev(k)}>{l}</button>)}</div></div>
-        <div className={'dz-frame ' + dev}><iframe ref={frame} src={`/site/${meta.sub}?embed=1`} title="พรีวิวร้าน" onLoad={push} /></div>
+        <div className={'dz-frame ' + dev}><iframe ref={frame} src={embedded ? '/?embed=1' : `/site/${meta.sub}?embed=1`} title="พรีวิวร้าน" onLoad={push} /></div>
       </div>
     </div>
   );
@@ -473,7 +541,13 @@ function Settings({ id }) {
         <div className="row2"><F k="title" l="ชื่อร้าน" max={40} /><F k="title_en" l="Shop name (English)" max={40} /></div>
         <div className="row2"><F k="tagline" l="คำโปรย" max={120} /><F k="tagline_en" l="Tagline (English)" max={120} /></div>
         <F k="about" l="เกี่ยวกับร้าน" max={600} area /><F k="about_en" l="About (English)" max={600} area />
-        <F k="logo" l="ลิงก์โลโก้ (https://…)" ph="https://…" />
+        <ImageField id={id} label="โลโก้ร้าน" value={site.logo} onChange={(v) => up('logo', v)} size={{ ...IMG_SIZE.logo, mode: 'fit' }} />
+        <F k="seo_desc" l="คำอธิบายร้านสำหรับ Google (SEO)" max={160} ph="สั้นๆ ไม่เกิน 160 ตัวอักษร" />
+      </div>
+      <div className="panel" style={{ display: 'grid', gap: 12 }}>
+        <h3>สถานะร้าน</h3>
+        <label style={{ display: 'flex', gap: 12, alignItems: 'center' }}><input type="checkbox" checked={!!site.closed} onChange={(e) => up('closed', e.target.checked)} /> <span><b>ปิดร้านชั่วคราว</b><span className="subtle" style={{ display: 'block', fontSize: 12.5 }}>ลูกค้ายังดูร้านได้ แต่สั่งซื้อไม่ได้ (เติมเงินยังได้)</span></span></label>
+        {site.closed && <F k="closed_msg" l="ข้อความที่แจ้งลูกค้า" max={200} ph="เช่น ปิดปรับปรุง กลับมาเปิดวันจันทร์" />}
       </div>
       <div className="panel" style={{ display: 'grid', gap: 12 }}>
         <h3>ประกาศหน้าร้าน</h3>

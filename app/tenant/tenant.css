@@ -149,3 +149,15 @@ html:has(.tsk[data-theme="light"]) body.tenant-body{background:#f6f6f7}
 .tsk .banner:has(>img){min-height:0!important;aspect-ratio:986/399!important}
 .tsk[data-skin="studio"] .banner:has(>img){aspect-ratio:4/1!important}
 .tsk .banner>img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ---------- ช่องแบนเนอร์ที่ขึ้นเสมอ (แสดงขนาดภาพ) + ปุ่มเจ้าของร้านอัปโหลดจากหน้าร้าน ---------- */
+.tsk .banner.banner-empty{display:grid;place-items:center;border:2px dashed var(--border-strong);background:repeating-linear-gradient(45deg,rgba(var(--fg-rgb),.025) 0 12px,transparent 12px 24px),var(--surface);box-shadow:none}
+.be-in{display:grid;justify-items:center;gap:6px;padding:20px;text-align:center;color:var(--muted)}
+.be-ic{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:rgba(var(--ac-rgb),.14);border:1px solid rgba(var(--ac-rgb),.35);color:var(--ac)}
+.be-in b{color:var(--text);font-size:clamp(15px,2.4vw,20px)}
+.be-size{font-size:clamp(12px,1.8vw,14px);padding:4px 12px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-2)}
+.banner-edit{position:absolute;right:14px;bottom:14px;z-index:3;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;background:var(--ac);color:var(--on-ac);font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px -8px rgba(var(--ac-rgb),.8);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.banner-edit:hover{transform:translateY(-2px)}
+.banner-empty .banner-edit{right:auto;bottom:auto;position:relative;margin-top:10px;inset:auto}
+.tsk .banner.banner-empty{position:relative}
+.banner-empty{flex-direction:column}

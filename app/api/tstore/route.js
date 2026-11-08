@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { route, json, body } from '@/lib/api';
 import { q, one, tx, HttpError } from '@/lib/db';
 import { str, int } from '@/lib/util';
-import { clientIp, rateLimit, recordAttempt, clearAttempts } from '@/lib/auth';
+import { clientIp, rateLimit, recordAttempt, clearAttempts, checkPassword } from '@/lib/auth';
 import { validateGiftLink, extractVoucherCode, redeemVoucher } from '@/lib/truemoney';
 import { validPhone } from '@/lib/phone';
 import { activeRental, getTUser, tCreateSession, tDestroySession, tHash, tCompare, getCatalog } from '@/lib/tstore';
@@ -71,6 +71,18 @@ export const POST = route(async (req) => {
     await clearAttempts(key);
     await tCreateSession(r, u.id);
     return json({ ok: true });
+  }
+  if (act === 'owner-login') { // เจ้าของร้านเข้าหลังบ้านจากเว็บของร้านเอง ด้วยบัญชีเว็บหลักที่เช่าไว้
+    if (r.demo) throw new HttpError(403, 'ร้านตัวอย่างไม่มีหลังบ้านเจ้าของร้าน');
+    const key = `town:${r.id}:${ip}`;
+    await rateLimit(key, 6, 15);
+    const mu = await one('SELECT id,username,password_hash,banned FROM users WHERE lower(username)=lower($1) OR lower(email)=lower($1)', [String(b.username || '').slice(0, 100)]);
+    if (!mu || mu.id !== r.user_id || mu.banned || !(await checkPassword(String(b.password || '').slice(0, 72), mu.password_hash))) { await recordAttempt(key); throw new HttpError(401, 'บัญชีหรือรหัสผ่านเจ้าของร้านไม่ถูกต้อง'); }
+    await clearAttempts(key);
+    let tu = await one('SELECT id FROM t_users WHERE rental_id=$1 AND is_owner', [r.id]);
+    if (!tu) tu = await one('INSERT INTO t_users(rental_id,username,pass_hash,is_owner) VALUES($1,$2,$3,TRUE) RETURNING id', [r.id, '@' + mu.username.slice(0, 18), await tHash(crypto.randomBytes(24).toString('hex'))]);
+    await tCreateSession(r, tu.id);
+    return json({ ok: true, owner: true });
   }
   if (act === 'logout') { await tDestroySession(r); return json({ ok: true }); }
 
@@ -151,6 +163,7 @@ export const POST = route(async (req) => {
 
   // ---------- ซื้อสินค้า (หักเงิน + ส่งของในธุรกรรมเดียว) ----------
   if (act === 'buy') {
+    if (r.site?.closed) throw new HttpError(403, r.site.closed_msg || 'ร้านปิดชั่วคราว');
     const pid = int(b.productId, { min: 1, name: 'สินค้า' });
     const qty = int(b.qty ?? 1, { min: 1, max: 20, name: 'จำนวน' });
     const out = await tx(async (c) => {

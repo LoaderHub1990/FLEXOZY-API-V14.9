@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Icon from './Icons';
 
-export function AuthShell({ mode, setMode, brand, logo, title, sub, perks, labels, children }) {
+export function AuthShell({ mode, setMode, brand, logo, title, sub, perks, labels, hideSeg, children }) {
   const L = { login: 'เข้าสู่ระบบ', register: 'สมัครสมาชิก', ...labels };
   return (
     <div className="auth2" data-mode={mode}>
@@ -18,11 +18,11 @@ export function AuthShell({ mode, setMode, brand, logo, title, sub, perks, label
       </aside>
       <section className="auth2-main">
         <div className="auth2-brand-m">{logo ? <img src={logo} alt="" width="30" height="30" /> : <span className="auth2-dot" />}<b>{brand}</b></div>
-        <div className="auth2-seg" role="tablist" data-mode={mode}>
+        {!hideSeg && <div className="auth2-seg" role="tablist" data-mode={mode}>
           <i />
           <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>{L.login}</button>
           <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>{L.register}</button>
-        </div>
+        </div>}
         <div className="auth2-form">{children}</div>
       </section>
     </div>

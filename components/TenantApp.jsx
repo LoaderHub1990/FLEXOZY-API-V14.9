@@ -5,6 +5,8 @@ import { createPortal, flushSync } from 'react-dom';
 import { makeT } from '@/lib/i18n';
 import Icon from './Icons';
 import { AuthShell, AField } from './AuthUI';
+import { StoreManageInner } from './StoreManage';
+import { resizeImage, IMG_SIZE } from './imgtools';
 
 const baht = (s) => (Number(s) / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const dt = (d) => new Date(d).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
@@ -34,7 +36,9 @@ const parseHash = () => {
   return { seg, q: new URLSearchParams(qs || '') };
 };
 
-export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0, theme: theme0, lang: lang0, vars: vars0, others }) {
+export default function TenantApp({ sub, rid, demo, shop: shop0, initial, skin: skin0, theme: theme0, lang: lang0, vars: vars0, others }) {
+  const [bn, setBn] = useState(null); // แบนเนอร์ที่เจ้าของร้านเพิ่งอัปโหลดจากหน้าร้าน
+  const [bnBusy, setBnBusy] = useState(false);
   const [pv, setPv] = useState(null); // พรีวิวสดจากหลังบ้าน (postMessage) ใช้เฉพาะตอนฝังในหน้าตั้งค่า
   const [lang, setLang] = useState(lang0);
   const [theme1, setTheme] = useState(theme0);
@@ -43,7 +47,7 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
   const pc = pv?.color ? hexRgb(pv.color) : null;
   const acVars = pc ? { '--ac': pv.color, '--ac-rgb': pc, '--on-ac': onCol(pc) } : vars0;
   const has = (k) => pv && k in pv;
-  const eff = { bg_image: has('bg_image') ? pv.bg_image : shop0.bg_image, bg_dim: has('bg_dim') ? pv.bg_dim : shop0.bg_dim, colors: has('colors') ? pv.colors : shop0.colors, font: has('font') ? pv.font : shop0.font, banner: has('banner') ? pv.banner : shop0.banner };
+  const eff = { bg_image: has('bg_image') ? pv.bg_image : shop0.bg_image, bg_dim: has('bg_dim') ? pv.bg_dim : shop0.bg_dim, colors: has('colors') ? pv.colors : shop0.colors, font: has('font') ? pv.font : shop0.font, banner: has('banner') ? pv.banner : (bn ?? shop0.banner) };
   const cl = eff.colors || {};
   const ownerTheme = pv?.theme || shop0.owner_theme;
   const ov = {};
@@ -85,6 +89,18 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
   const nav = (p) => { location.hash = p; };
   async function logout() { await call('POST', '/api/tstore', { sub, action: 'logout' }).catch(() => {}); await reload(); say(t('ออกจากระบบแล้ว')); if (page === 'account') nav('/'); }
   const authOpen = (mode) => setModal({ t: 'auth', mode });
+  async function uploadBanner(file) {
+    if (!me?.owner || !file) return;
+    setBnBusy(true);
+    try {
+      const sz = skin === 'studio' ? IMG_SIZE.bannerStudio : IMG_SIZE.banner;
+      const data = await resizeImage(file, { w: sz.w, h: sz.h });
+      const up = await call('POST', '/api/rent/store', { rental: rid, op: 'image.upload', data });
+      const cur = await call('GET', `/api/rent/store?rental=${rid}&view=site`);
+      await call('PUT', '/api/rent', { rentalId: rid, site: { ...cur.site, banner: up.url } });
+      setBn(up.url); say('อัปโหลดแบนเนอร์แล้ว');
+    } catch (x) { say(x.message); } finally { setBnBusy(false); }
+  }
   const switchLang = () => { const n = lang === 'th' ? 'en' : 'th'; setLang(n); setCookie('fx_lang', n); document.documentElement.lang = n; };
   const switchTheme = (ev) => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -119,6 +135,7 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
             <div className="nav-links">
               {links.map(([h, l, k]) => <a key={k} href={'#' + h} className={'nav-link' + (page === k || (k === 'home' && page === 'home') || (k === 'store' && page === 'p') ? ' active' : '')}>{t(l)}</a>)}
               <button className="nav-link" onClick={() => setModal({ t: 'contact' })}>{t('ติดต่อเรา')}</button>
+              {me?.owner && <a href="#/admin" className={'nav-link' + (page === 'admin' ? ' active' : '')}><Icon n="dash" size={14} /> {t('หลังบ้าน')}</a>}
             </div>
             <div className="nav-right">
               {prefs(false)}
@@ -137,14 +154,18 @@ export default function TenantApp({ sub, demo, shop: shop0, initial, skin: skin0
         <a href="#/" className={'tab' + (page === 'home' ? ' active' : '')}><Icon n="home" />{t('หน้าหลัก')}</a>
         <a href="#/store" className={'tab' + (page === 'store' || page === 'p' ? ' active' : '')}><Icon n="store" />{t('ร้านค้า')}</a>
         <a href="#/account/topup" className={'tab' + (page === 'account' ? ' active' : '')}><Icon n="wallet" />{t('เติมเงิน')}</a>
+        {me?.owner ? <a href="#/admin" className={'tab' + (page === 'admin' ? ' active' : '')}><Icon n="dash" />{t('หลังบ้าน')}</a> : null}
         {me ? <a href="#/account" className="tab"><Icon n="user" />{t('บัญชี')}</a> : <button className="tab" onClick={() => authOpen('register')}><Icon n="user" />{t('สมัคร')}</button>}
       </nav>
 
       <main><div key={page + (route.seg[1] || '')} className="page-in">
-        {page === 'store' ? <StorePage data={data} q={route.q} />
+        {page === 'admin' ? (me?.owner
+          ? <div className="wrap"><StoreManageInner id={rid} embedded rootUrl={`https://${shop.root}`} onExit={() => nav('/')} /></div>
+          : <NeedOwner onAuth={() => authOpen('owner')} />)
+          : page === 'store' ? <StorePage data={data} q={route.q} />
           : page === 'p' ? <ProductPage data={data} id={Number(route.seg[1])} me={me} onAuth={() => authOpen('login')} onBuy={(p, qty) => setModal({ t: 'buy', p, qty })} />
           : page === 'account' ? (me ? <AccountPage sub={sub} me={me} demo={demo} canTopup={shop.canTopup} tab0={route.seg[1]} onChange={reload} say={say} /> : <NeedLogin onAuth={() => authOpen('login')} />)
-          : <Home data={data} shop={shop} now={now} lang={lang} skin={skin} onAuth={() => authOpen('register')} me={me} />}
+          : <Home data={data} shop={shop} now={now} lang={lang} skin={skin} bannerUp={uploadBanner} bnBusy={bnBusy} bsize={skin === 'studio' ? IMG_SIZE.bannerStudio : IMG_SIZE.banner} onAuth={() => authOpen('register')} me={me} bannerUp={uploadBanner} bnBusy={bnBusy} bsize={skin === 'studio' ? IMG_SIZE.bannerStudio : IMG_SIZE.banner} />}
       </div></main>
 
       <footer className="footer">
@@ -211,33 +232,38 @@ function Modals({ root, modal, close, shop, sub, me, reload, say, nav, setModal 
 
 function AuthBox({ sub, mode0, shop, onDone }) {
   const t = useTT();
-  const [mode, setMode] = useState(mode0);
+  const owner = mode0 === 'owner';
+  const [mode, setMode] = useState(owner ? 'login' : mode0);
+  const [isOwner, setIsOwner] = useState(owner);
   const [u, setU] = useState(''); const [p, setP] = useState('');
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   async function go(e) {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { await call('POST', '/api/tstore', { sub, action: mode, username: u, password: p }); onDone(); }
+    try { await call('POST', '/api/tstore', { sub, action: isOwner ? 'owner-login' : mode, username: u, password: p }); onDone(isOwner); }
     catch (x) { setErr(x.message); } finally { setBusy(false); }
   }
   return (
-    <AuthShell mode={mode} setMode={(m) => { setMode(m); setErr(''); }} brand={shop.title} logo={shop.logo}
-      title={mode === 'login' ? t('ยินดีต้อนรับกลับมา') : t('สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน')}
-      sub={mode === 'login' ? t('เข้าสู่ระบบเพื่อดูยอดเงิน ประวัติการสั่งซื้อ และคีย์ของคุณ') : t('สมัครฟรี ใช้เวลาไม่ถึงหนึ่งนาที')}
-      perks={[['bolt', t('รับสินค้าทันทีหลังชำระเงิน')], ['shield', t('ปลอดภัย ใช้งานง่าย')], ['wallet', t('เติมเงินง่ายด้วยซองอั่งเปา TrueMoney')]]}>
-      <form onSubmit={go} key={mode}>
-        <AField icon="user" label={t('ชื่อผู้ใช้')} autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} maxLength={20} required />
-        <AField icon="lock" type="password" label={mode === 'register' ? t('รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)') : t('รหัสผ่าน')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={p} onChange={(e) => setP(e.target.value)} maxLength={72} required />
+    <AuthShell mode={mode} setMode={(m) => { setMode(m); setErr(''); }} brand={shop.title} logo={shop.logo} hideSeg={isOwner}
+      title={isOwner ? t('เข้าสู่ระบบเจ้าของร้าน') : mode === 'login' ? t('ยินดีต้อนรับกลับมา') : t('สร้างบัญชีเพื่อสั่งซื้อและเติมเงิน')}
+      sub={isOwner ? t('ใช้บัญชีเดียวกับที่เช่าเว็บ เพื่อจัดการสินค้า สต็อก ดีไซน์ และการตั้งค่าร้านจากหน้านี้') : mode === 'login' ? t('เข้าสู่ระบบเพื่อดูยอดเงิน ประวัติการสั่งซื้อ และคีย์ของคุณ') : t('สมัครฟรี ใช้เวลาไม่ถึงหนึ่งนาที')}
+      perks={isOwner ? [['dash', t('จัดการสินค้าและสต็อก')], ['layers', t('ปรับดีไซน์ สี และรูปภาพ')], ['wallet', t('ตรวจเติมเงินและออเดอร์')]] : [['bolt', t('รับสินค้าทันทีหลังชำระเงิน')], ['shield', t('ปลอดภัย ใช้งานง่าย')], ['wallet', t('เติมเงินง่ายด้วยซองอั่งเปา TrueMoney')]]}>
+      <form onSubmit={go} key={mode + isOwner}>
+        <AField icon="user" label={isOwner ? t('ชื่อผู้ใช้หรืออีเมล (บัญชีเว็บหลัก)') : t('ชื่อผู้ใช้')} autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} maxLength={100} required />
+        <AField icon="lock" type="password" label={!isOwner && mode === 'register' ? t('รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)') : t('รหัสผ่าน')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={p} onChange={(e) => setP(e.target.value)} maxLength={72} required />
         {err && <div className="msg err" style={{ margin: 0 }}>{t(err)}</div>}
-        <button className="auth2-go" disabled={busy}>{busy ? <span className="spin" /> : <>{mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'} <Icon n="arrow" size={16} /></>}</button>
+        <button className="auth2-go" disabled={busy}>{busy ? <span className="spin" /> : <>{isOwner ? t('เข้าสู่ระบบเจ้าของร้าน') : mode === 'login' ? t('เข้าสู่ระบบ') : t('สมัครสมาชิก')} <Icon n="arrow" size={16} /></>}</button>
       </form>
-      <div className="auth2-foot">{mode === 'login' ? t('ยังไม่มีบัญชี?') : t('มีบัญชีอยู่แล้ว?')} <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}>{mode === 'login' ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</button></div>
+      <div className="auth2-foot">
+        {!isOwner && <>{mode === 'login' ? t('ยังไม่มีบัญชี?') : t('มีบัญชีอยู่แล้ว?')} <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}>{mode === 'login' ? t('สมัครสมาชิก') : t('เข้าสู่ระบบ')}</button><br /></>}
+        <button type="button" style={{ marginTop: 6, fontWeight: 400, opacity: 0.8 }} onClick={() => { setIsOwner(!isOwner); setMode('login'); setErr(''); }}>{isOwner ? t('← กลับไปเข้าสู่ระบบลูกค้า') : t('เจ้าของร้าน? เข้าสู่ระบบจัดการร้าน')}</button>
+      </div>
     </AuthShell>
   );
 }
 
 const Img = ({ src, name, cls }) => src ? <img src={src} alt={name} loading="lazy" /> : <div className={'ph ' + (cls || '')}>{(name || '?').slice(0, 1)}</div>;
 
-function Home({ data, shop, now, lang, skin, onAuth, me }) {
+function Home({ data, shop, now, lang, skin, onAuth, me, bannerUp, bnBusy, bsize }) {
   const t = useTT();
   const featured = useMemo(() => [...data.products].sort((a, b) => b.sold - a.sold).slice(0, 5), [data.products]);
   const rec = data.recent;
@@ -246,12 +272,23 @@ function Home({ data, shop, now, lang, skin, onAuth, me }) {
   const st = [['users', t('ผู้ใช้งานทั้งหมด'), data.stats.users], ['box', t('สินค้าพร้อมขาย'), data.stats.products], ['bag', t('ขายแล้วทั้งหมด'), data.stats.sold]];
   return (
     <div className="wrap">
-      {shop.banner && (
-        <section className="banner rv in" aria-label={shop.title}>
-          <img src={shop.banner} alt={shop.title} width="986" height="399" decoding="async" fetchPriority="high" />
-          <i className="banner-edge" aria-hidden="true" />
-        </section>
-      )}
+      {shop.closed && <div className="msg err" role="alert" style={{ marginBottom: 14 }}>⏸ {shop.closed_msg || t('ร้านปิดชั่วคราว')}</div>}
+      <section className={'banner rv in' + (shop.banner ? '' : ' banner-empty')} aria-label={shop.title}>
+        {shop.banner ? <img src={shop.banner} alt={shop.title} width="986" height="399" decoding="async" fetchPriority="high" /> : (
+          <div className="be-in">
+            <span className="be-ic"><Icon n="layers" size={26} /></span>
+            <b>{t('พื้นที่แบนเนอร์')}</b>
+            <span className="be-size">{t('ขนาดภาพที่ใช้')} {bsize.label}</span>
+          </div>
+        )}
+        {me?.owner && (
+          <label className="banner-edit">
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={bnBusy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) bannerUp(f); }} />
+            {bnBusy ? <span className="spin" /> : <>⬆ {shop.banner ? t('เปลี่ยนรูปแบนเนอร์') : t('อัปโหลดรูปแบนเนอร์')}</>}
+          </label>
+        )}
+        <i className="banner-edge" aria-hidden="true" />
+      </section>
 
       {shop.announce && (
         <div className="annc rv in" role="status">
@@ -433,6 +470,11 @@ function BuyConfirm({ sub, p, qty, me, onClose, onBought, nav }) {
       {err && <div className="msg err">{t(err)}</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}><button className="btn" style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('ยกเลิก')}</button><button className="btn btn-primary" style={{ flex: 1 }} onClick={buy} disabled={busy || me.balance < total}>{busy ? <span className="spin" /> : t('ยืนยันสั่งซื้อ')}</button></div></div>
   );
+}
+
+function NeedOwner({ onAuth }) {
+  const t = useTT();
+  return <div className="wrap"><div className="empty"><p style={{ marginBottom: 14 }}>{t('หน้านี้สำหรับเจ้าของร้าน กรุณาเข้าสู่ระบบเจ้าของร้านก่อน')}</p><button className="btn btn-primary" onClick={onAuth}>{t('เข้าสู่ระบบเจ้าของร้าน')}</button></div></div>;
 }
 
 function NeedLogin({ onAuth }) { const t = useTT(); return <div className="wrap"><div className="empty"><p style={{ marginBottom: 14 }}>{t('กรุณาเข้าสู่ระบบก่อน')}</p><button className="btn btn-primary" onClick={onAuth}>{t('เข้าสู่ระบบ')}</button></div></div>; }

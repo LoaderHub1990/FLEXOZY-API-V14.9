@@ -3,6 +3,7 @@ import { q, one, tx, HttpError } from '@/lib/db';
 import { int } from '@/lib/util';
 import { getUser, requireUser, clientIp } from '@/lib/auth';
 import { seedSite } from '@/lib/templates';
+import { ownerRental } from '@/lib/tstore';
 import { ROOT_DOMAIN, parseSub, isSubFree, getRentPlans, rentalState, cleanSite, lightLimit, siteUrl, GRACE_DAYS } from '@/lib/rent';
 
 export const dynamic = 'force-dynamic';
@@ -81,11 +82,9 @@ export const POST = route(async (req) => {
 
 // แก้ไขเนื้อหาเว็บ (เจ้าของเท่านั้น)
 export const PUT = route(async (req) => {
-  const user = await requireUser();
   const b = await body(req);
   const id = int(b.rentalId, { min: 1, name: 'เว็บ' });
-  const r = await one('SELECT * FROM rentals WHERE id=$1 AND user_id=$2', [id, user.id]);
-  if (!r) throw new HttpError(404, 'ไม่พบเว็บนี้');
+  await ownerRental(id); // ล็อกอินเว็บหลัก หรือเป็นเจ้าของร้านบนเว็บของร้านเอง
   const site = cleanSite(b.site);
   const row = (await q('UPDATE rentals SET site=$1::jsonb WHERE id=$2 RETURNING *', [JSON.stringify(site), id])).rows[0];
   return json({ ok: true, rental: view(row) });

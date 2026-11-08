@@ -15,7 +15,7 @@ export async function generateMetadata({ params, searchParams }) {
   const s = r?.site || {};
   if (!r) return { title: { absolute: '404' } };
   const demo = !!r.demo;
-  return { title: { absolute: demo ? `${s.title} — ร้านตัวอย่าง` : s.title || r.sub }, description: s.tagline || undefined, robots: { index: demo || rentalState(r) === 'active' } };
+  return { title: { absolute: demo ? `${s.title} — ร้านตัวอย่าง` : s.title || r.sub }, description: s.seo_desc || s.tagline || undefined, robots: { index: demo || rentalState(r) === 'active' } };
 }
 
 const hex = (c) => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#ffffff');
@@ -52,8 +52,8 @@ export default async function Tenant({ params, searchParams }) {
   }
   const [catalog, me] = await Promise.all([getCatalog(r.id, { demo }), getTUser(r)]);
   const shop = {
-    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', banner: s.banner || '', bg_image: s.bg_image || '', bg_dim: s.bg_dim || 0, colors: s.colors || {}, font: s.font || '', owner_theme: s.theme === 'light' ? 'light' : 'dark', announce: s.announce || '', announce_en: s.announce_en || '', title_en: s.title_en || '', tagline_en: s.tagline_en || '', about_en: s.about_en || '', logo: s.logo || '', root: ROOT_DOMAIN, embed,
+    title: s.title || r.sub, tagline: s.tagline || '', about: s.about || '', banner: s.banner || '', bg_image: s.bg_image || '', bg_dim: s.bg_dim || 0, colors: s.colors || {}, font: s.font || '', closed: !!s.closed, closed_msg: s.closed_msg || '', owner_theme: s.theme === 'light' ? 'light' : 'dark', announce: s.announce || '', announce_en: s.announce_en || '', title_en: s.title_en || '', tagline_en: s.tagline_en || '', about_en: s.about_en || '', logo: s.logo || '', root: ROOT_DOMAIN, embed,
     links: (s.links || []).map((l) => ({ label: l.label, url: safeHref(l.url) })), canTopup: validPhone(s.pay_phone),
   };
-  return <TenantApp sub={r.sub} demo={demo} shop={shop} initial={{ ...catalog, me }} skin={tpl} theme={theme} lang={lang} vars={vars} others={TEMPLATES.map((x) => ({ slug: x.slug, name: x.name }))} />;
+  return <TenantApp sub={r.sub} rid={r.id} demo={demo} shop={shop} initial={{ ...catalog, me }} skin={tpl} theme={theme} lang={lang} vars={vars} others={TEMPLATES.map((x) => ({ slug: x.slug, name: x.name }))} />;
 }
